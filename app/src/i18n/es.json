@@ -1,0 +1,57 @@
+{
+  "app": {
+    "titulo": "Poker Gym",
+    "subtitulo": "Entrenador Push/Fold"
+  },
+  "dashboard": {
+    "saludo": "A entrenar",
+    "racha": "Racha",
+    "dias": "días",
+    "precision": "Precisión global",
+    "manos": "manos resueltas",
+    "modoTorneos": "Modo Torneos",
+    "modoTorneosDesc": "Push/Fold con stacks cortos · {n} manos",
+    "modoCash": "Modo Cash Games",
+    "proximamente": "Próximamente",
+    "vacio": "Aún no has resuelto ninguna mano. Tu precisión aparecerá aquí.",
+    "modoCashDesc": "River: ¿Call o Fold? · {n} manos"
+  },
+  "gimnasio": {
+    "pozo": "Pozo",
+    "stack": "Tu stack",
+    "villano": "Villano",
+    "heroe": "Tú",
+    "mano": "Mano {actual} de {total}",
+    "salir": "Salir"
+  },
+  "whycard": {
+    "optima": "Jugada óptima",
+    "error": "Error táctico (EV−)",
+    "correctaEra": "La jugada correcta era {accion}",
+    "matematica": "Matemática",
+    "rangos": "Rangos",
+    "conclusion": "Conclusión",
+    "equity": "Equidad",
+    "potOdds": "Pot odds",
+    "siguiente": "Siguiente mano",
+    "verResumen": "Ver resumen"
+  },
+  "resumen": {
+    "titulo": "Sesión completada",
+    "aciertos": "{ok} de {total} correctas",
+    "volver": "Volver al inicio",
+    "otra": "Otra sesión"
+  },
+  "dificultad": {
+    "Principiante": "Principiante",
+    "Intermedio": "Intermedio",
+    "Avanzado": "Avanzado"
+  },
+  "posicion": {
+    "SB": "Ciega Pequeña",
+    "BB": "Ciega Grande",
+    "BTN": "Botón",
+    "CO": "Cutoff",
+    "HJ": "Hijack"
+  }
+}

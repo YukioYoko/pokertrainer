@@ -1,0 +1,57 @@
+{
+  "app": {
+    "titulo": "Poker Gym",
+    "subtitulo": "Push/Fold Trainer"
+  },
+  "dashboard": {
+    "saludo": "Time to train",
+    "racha": "Streak",
+    "dias": "days",
+    "precision": "Overall accuracy",
+    "manos": "hands solved",
+    "modoTorneos": "Tournament Mode",
+    "modoTorneosDesc": "Short-stack Push/Fold · {n} hands",
+    "modoCash": "Cash Game Mode",
+    "proximamente": "Coming soon",
+    "vacio": "You haven't solved any hands yet. Your accuracy will show up here.",
+    "modoCashDesc": "River: Call or Fold? · {n} hands"
+  },
+  "gimnasio": {
+    "pozo": "Pot",
+    "stack": "Your stack",
+    "villano": "Villain",
+    "heroe": "You",
+    "mano": "Hand {actual} of {total}",
+    "salir": "Exit"
+  },
+  "whycard": {
+    "optima": "Optimal play",
+    "error": "Tactical error (EV−)",
+    "correctaEra": "The correct play was {accion}",
+    "matematica": "Math",
+    "rangos": "Ranges",
+    "conclusion": "Takeaway",
+    "equity": "Equity",
+    "potOdds": "Pot odds",
+    "siguiente": "Next hand",
+    "verResumen": "See summary"
+  },
+  "resumen": {
+    "titulo": "Session complete",
+    "aciertos": "{ok} of {total} correct",
+    "volver": "Back to home",
+    "otra": "New session"
+  },
+  "dificultad": {
+    "Principiante": "Beginner",
+    "Intermedio": "Intermediate",
+    "Avanzado": "Advanced"
+  },
+  "posicion": {
+    "SB": "Small Blind",
+    "BB": "Big Blind",
+    "BTN": "Button",
+    "CO": "Cutoff",
+    "HJ": "Hijack"
+  }
+}
