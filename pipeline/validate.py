@@ -22,6 +22,8 @@ CAPAS = {"matematica_rapida", "psicologia_y_rangos", "control_y_conclusion"}
 def check(s: dict) -> list[str]:
     if s.get("tipo") == "hand_full":
         return _check_hand(s)
+    if s.get("tipo") == "outs":
+        return _check_outs(s)
 
     errors: list[str] = []
 
@@ -213,6 +215,63 @@ def _check_hand(s: dict) -> list[str]:
         if not (isinstance(v, dict) and v.get("es") and v.get("en")):
             errors.append(f"{campo} sin es/en")
 
+    return errors
+
+
+def _check_outs(s: dict) -> list[str]:
+    """Ejercicio de outs: la opción correcta debe ser el porcentaje ofrecido más
+    cercano a la probabilidad exacta almacenada; además board de 3-4 cartas y
+    prosa bilingüe (accion_previa + explicacion)."""
+    errors = []
+    for key in ("id", "modo", "tipo", "dificultad", "cartas_heroe", "board",
+                "opciones", "opcion_correcta_index", "math", "accion_previa",
+                "explicacion", "leak_tags"):
+        if key not in s:
+            errors.append(f"falta clave '{key}'")
+    if errors:
+        return errors
+
+    if s["modo"] != "Outs":
+        errors.append("modo debe ser 'Outs'")
+    if s["dificultad"] not in DIFFS:
+        errors.append("dificultad inválida")
+
+    cards = s["cartas_heroe"]
+    board = s["board"]
+    all_cards = cards + board
+    if (len(cards) != 2 or len(board) not in (3, 4)
+            or len(set(all_cards)) != len(all_cards)
+            or any(c not in VALID_CARDS for c in all_cards)):
+        errors.append("cartas inválidas o board no es flop/turn")
+
+    m = s["math"]
+    if not (0 <= m.get("prob", -1) <= 1):
+        errors.append("prob fuera de 0..1")
+    if not (1 <= m.get("outs", 0) <= 20):
+        errors.append("outs fuera de rango")
+
+    # La opción correcta = el % ofrecido más cercano a la prob exacta.
+    try:
+        pcts = [int(o.rstrip("%")) for o in s["opciones"]]
+    except (ValueError, AttributeError):
+        errors.append("opciones no son porcentajes válidos")
+        return errors
+    if len(pcts) < 2:
+        errors.append("faltan opciones")
+        return errors
+    target = m["prob"] * 100
+    expected = min(range(len(pcts)), key=lambda i: abs(pcts[i] - target))
+    if s["opcion_correcta_index"] != expected:
+        errors.append(
+            f"opción correcta no es la más cercana a {target:.1f}% "
+            f"({s['opcion_correcta_index']} != {expected})")
+
+    ap = s["accion_previa"]
+    if not (isinstance(ap, dict) and ap.get("es") and ap.get("en")):
+        errors.append("accion_previa sin es/en")
+    ex = s["explicacion"]
+    if not (isinstance(ex, dict) and ex.get("es") and ex.get("en")):
+        errors.append("explicacion sin es/en")
     return errors
 
 

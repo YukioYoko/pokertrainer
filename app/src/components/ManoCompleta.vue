@@ -16,12 +16,19 @@ const handIdx = ref(0)
 const streetIdx = ref(0)
 const picks = ref([])              // índices elegidos en la mano actual
 const phase = ref('play')          // 'play' | 'review' | 'done'
-const sessionScore = ref([])       // por mano: nº de calles acertadas
+const sessionScore = ref([])       // por mano: { ok, total } decisiones jugadas
 
 const hasHands = computed(() => order.value.length > 0)
 const hand = computed(() => props.scenarios[order.value[handIdx.value]])
 const calle = computed(() => hand.value.calles[streetIdx.value])
 const loc = computed(() => (locale.value === 'en' ? 'en' : 'es'))
+
+// Calles efectivamente jugadas (si el héroe foldea, la mano termina ahí).
+const playedCalles = computed(() =>
+  hand.value.calles.slice(0, picks.value.length))
+// Foldeó antes del river → la mano se cortó; no mostramos el resumen global.
+const foldedEarly = computed(() =>
+  picks.value.length < hand.value.calles.length)
 
 // Vista de mesa por calle: board parcial + pozo previo a la apuesta.
 const viewScenario = computed(() => ({
@@ -47,15 +54,19 @@ function buildSession () {
 
 async function choose (i) {
   picks.value.push(i)
-  if (streetIdx.value + 1 < hand.value.calles.length) {
-    streetIdx.value++
-  } else {
-    // Fin de la mano: registrar y pasar al repaso.
-    const okStreets = hand.value.calles.filter(
-      (nd, k) => picks.value[k] === nd.opcion_correcta_index).length
-    sessionScore.value.push(okStreets)
-    await record(hand.value, okStreets === hand.value.calles.length)
+  const folded = i === 0                                   // 0 = Fold
+  const lastStreet = streetIdx.value + 1 >= hand.value.calles.length
+  if (folded || lastStreet) {
+    // Foldear corta la mano aquí; un Call en el river también la termina.
+    // El repaso y el score cuentan solo las calles jugadas.
+    const played = picks.value.length
+    const ok = hand.value.calles.slice(0, played)
+      .filter((nd, k) => picks.value[k] === nd.opcion_correcta_index).length
+    sessionScore.value.push({ ok, total: played })
+    await record(hand.value, ok === played)   // bien jugada = todo lo jugado correcto
     phase.value = 'review'
+  } else {
+    streetIdx.value++
   }
 }
 
@@ -76,11 +87,11 @@ function restart () {
   phase.value = 'play'
 }
 
-// Resumen final
-const totalStreets = computed(() =>
-  sessionScore.value.length * 3)
+// Resumen final: sobre las decisiones realmente tomadas (no siempre 3 por mano).
 const okStreetsTotal = computed(() =>
-  sessionScore.value.reduce((a, b) => a + b, 0))
+  sessionScore.value.reduce((a, s) => a + s.ok, 0))
+const totalStreets = computed(() =>
+  sessionScore.value.reduce((a, s) => a + s.total, 0))
 const accuracy = computed(() => totalStreets.value
   ? Math.round((okStreetsTotal.value / totalStreets.value) * 100) : 0)
 </script>
@@ -176,7 +187,7 @@ const accuracy = computed(() => totalStreets.value
 
       <div class="mt-3 space-y-3 overflow-y-auto">
         <div
-          v-for="(nd, k) in hand.calles" :key="k"
+          v-for="(nd, k) in playedCalles" :key="k"
           class="rounded-2xl border p-4"
           :class="picks[k] === nd.opcion_correcta_index
             ? 'border-gana/40 bg-gana/5' : 'border-pierde/40 bg-pierde/5'"
@@ -200,7 +211,12 @@ const accuracy = computed(() => totalStreets.value
           <p class="mt-3 text-sm text-naipe/80 leading-relaxed">{{ nd.explicacion[loc] }}</p>
         </div>
 
-        <p class="text-sm text-naipe/60 leading-relaxed bg-felt-800 border border-felt-700 rounded-xl px-4 py-3">
+        <!-- Nota de retirada si la mano se cortó antes del river -->
+        <p v-if="foldedEarly" class="text-sm text-ambar/90 leading-relaxed bg-felt-800 border border-ambar-dim rounded-xl px-4 py-3">
+          {{ $t('manoCompleta.terminada', { calle: playedCalles[playedCalles.length - 1].calle }) }}
+        </p>
+        <!-- Resumen global solo si se jugó la mano entera (llegó al river) -->
+        <p v-else class="text-sm text-naipe/60 leading-relaxed bg-felt-800 border border-felt-700 rounded-xl px-4 py-3">
           {{ hand.resumen[loc] }}
         </p>
       </div>

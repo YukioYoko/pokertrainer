@@ -17,6 +17,7 @@ import cash_generator
 import explain
 import generator
 import hand_generator
+import outs_generator
 import validate
 
 
@@ -45,6 +46,8 @@ def main() -> int:
                     help="nº de escenarios de Cash a 3 bandas (river)")
     ap.add_argument("--n-hands", type=int, default=0,
                     help="nº de escenarios de Mano Completa (flop→turn→river)")
+    ap.add_argument("--n-outs", type=int, default=0,
+                    help="nº de escenarios de Outs (probabilidad de proyecto)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--out", default="scenarios_db.json")
@@ -93,6 +96,14 @@ def main() -> int:
         print(f"    {len(hands)} crudos")
         _redact(hands, args.offline, "Mano Completa")
         scenarios += hands
+
+    if args.n_outs > 0:
+        print(f"[3b] Generando {args.n_outs} escenarios de Outs "
+              f"(seed={args.seed + 4000})...")
+        outs = outs_generator.generate(args.n_outs, args.seed + 4000)
+        print(f"    {len(outs)} crudos")
+        _redact(outs, args.offline, "Outs")
+        scenarios += outs
 
     print("[4] Validando esquema y coherencia...")
     ok, log = validate.filter_valid(scenarios)

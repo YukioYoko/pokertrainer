@@ -207,14 +207,24 @@ def _offline_overcall(s: dict) -> dict:
               f"(about {ncombos} combos). It is a pure chip-EV call: your "
               f"equity versus the pot odds.")
 
-    psi_es = (f"El rango de all-in desde {jpos_es} se deriva de los umbrales "
-              f"Nash: cuanto más corto el stack, más ancho jamea y más manos "
-              f"medias pagas rentablemente. A {stack} BB su rango sigue "
-              f"conteniendo faroles y manos dominadas que subes de equidad.")
-    psi_en = (f"The all-in range from {jpos_en} comes straight from the Nash "
-              f"thresholds: the shorter the stack, the wider the shove and the "
-              f"more medium hands you can profitably call. At {stack} BB that "
-              f"range still holds bluffs and dominated hands you beat.")
+    if call:
+        psi_es = (f"El rango de all-in desde {jpos_es} se deriva de los umbrales "
+                  f"Nash. A {stack} BB es lo bastante ancho (parejas medias, Ax "
+                  f"y manos peores que la tuya) para que tu equidad alcance el "
+                  f"precio: cuanto más corto el stack, más rentable es pagar.")
+        psi_en = (f"The all-in range from {jpos_en} comes from the Nash "
+                  f"thresholds. At {stack} BB it is wide enough (medium pairs, "
+                  f"Ax and hands worse than yours) for your equity to meet the "
+                  f"price: the shorter the stack, the more profitable the call.")
+    else:
+        psi_es = (f"El rango de all-in desde {jpos_es} a {stack} BB, aunque "
+                  f"incluya alguna mano peor, en conjunto te supera: hay "
+                  f"demasiadas parejas y ases que te dominan. Por eso tu "
+                  f"equidad no llega al precio y estar en la ciega no obliga a pagar.")
+        psi_en = (f"The all-in range from {jpos_en} at {stack} BB, even if it "
+                  f"holds a few worse hands, beats you overall: too many pairs "
+                  f"and aces dominate you. That is why your equity falls short "
+                  f"and being in the blind does not force a call.")
 
     if call:
         con_es = (f"Con {eq}% de equidad frente a {po}% requerido, pagar es "
@@ -286,14 +296,24 @@ def _offline_cash(s: dict) -> dict:
               f"MDF versus this sizing is {mdf_pct}% and the Janda ratio "
               f"allows up to {vbr}% unexploitable bluffs.")
 
-    psi_es = (f"El rango de apuesta del rival se compone de {nv} combos de "
-              f"valor (doble pareja o mejor, o top pair fuerte) y {nb} "
-              f"faroles naturales sin equidad de showdown. Tu mano solo gana "
-              f"contra la porción de faroles y las manos de valor que superas.")
-    psi_en = (f"The villain's betting range holds {nv} value combos (two pair "
-              f"or better, or strong top pair) and {nb} natural bluffs with "
-              f"no showdown value. Your hand only wins against the bluff "
-              f"portion and the value hands you beat.")
+    if nb > 0:
+        psi_es = (f"El rango de apuesta del rival son {nv} combos de valor "
+                  f"(doble pareja o mejor, o top pair fuerte) y {nb} faroles "
+                  f"sin equidad de showdown. Ganas contra esos faroles y contra "
+                  f"las manos de valor que superas; el resto te tiene batido.")
+        psi_en = (f"The villain's betting range is {nv} value combos (two pair "
+                  f"or better, or strong top pair) and {nb} bluffs with no "
+                  f"showdown value. You win against those bluffs and the value "
+                  f"hands you beat; the rest has you beaten.")
+    else:
+        psi_es = (f"En este board el rival no tiene faroles naturales: su "
+                  f"apuesta son {nv} combos de puro valor, así que casi solo "
+                  f"ganas cuando tu mano supera a manos de valor concretas. Por "
+                  f"eso el rango te bate tan a menudo.")
+        psi_en = (f"On this board the villain has no natural bluffs: the bet is "
+                  f"{nv} pure-value combos, so you mostly win only when your "
+                  f"hand beats specific value holdings. That is why the range "
+                  f"has you beaten so often.")
     if is_3way:
         psi_es += (f" Además, el pagador en {pag_es} entra con ~{ncall} combos "
                    f"de una pareja hecha: al ser 3 bandas necesitas superar a "
@@ -399,7 +419,46 @@ def _offline_hand(s: dict) -> dict:
     }
 
 
+def _offline_outs(s: dict) -> dict:
+    """Explicación determinista del cálculo de outs (accion_previa + explicacion).
+    No usa las 3 capas del desglose: es un ejercicio de probabilidad puntual."""
+    m = s["_meta"]
+    hand = m["hand"]
+    draw_es = m["draw_name"]["es"]
+    draw_en = m["draw_name"]["en"]
+    outs = s["math"]["outs"]
+    prob = round(s["math"]["prob"] * 100, 1)
+    tc = s["math"]["cartas_por_venir"]
+    regla = s["math"]["regla_pulgar"]
+    calle_es = "flop" if tc == 2 else "turn"
+    calle_en = "flop" if tc == 2 else "turn"
+    factor = 4 if tc == 2 else 2
+
+    ap_es = (f"Tienes {hand} y vas a {draw_es}. Con el board actual en el "
+             f"{calle_es}, ¿qué probabilidad tienes de ligar tu proyecto de "
+             f"aquí al river?")
+    ap_en = (f"You hold {hand} drawing to a {draw_en}. With the current "
+             f"{calle_en} board, what is your chance to complete it by the "
+             f"river?")
+
+    ex_es = (f"Tienes {outs} outs (cartas que te dan {draw_es}). Con {tc} "
+             f"carta(s) por venir, la probabilidad exacta de ligar al menos "
+             f"uno es {prob}%. Regla rápida: outs × {factor} = {regla}%, muy "
+             f"cerca del valor real — úsala en la mesa para estimar al vuelo.")
+    ex_en = (f"You have {outs} outs (cards that make your {draw_en}). With {tc} "
+             f"card(s) to come, the exact chance to hit at least one is {prob}%. "
+             f"Quick rule: outs × {factor} = {regla}%, very close to the real "
+             f"number — use it at the table to estimate on the fly.")
+
+    return {
+        "accion_previa": {"es": ap_es, "en": ap_en},
+        "explicacion": {"es": ex_es, "en": ex_en},
+    }
+
+
 def explain(s: dict, offline: bool = False) -> dict:
+    if s.get("tipo") == "outs":
+        return _offline_outs(s)        # ejercicio de probabilidad (sin LLM)
     if s.get("tipo") == "hand_full":
         return _offline_hand(s)        # multi-nodo determinista (sin LLM)
     if offline or not os.environ.get("ANTHROPIC_API_KEY"):

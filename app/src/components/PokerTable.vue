@@ -61,7 +61,7 @@ function rolName (rol) {
         <div v-if="scenario.board.length" class="flex gap-1.5">
           <PlayingCard v-for="c in scenario.board" :key="c" :card="c" size="sm" />
         </div>
-        <div class="bg-felt-950/70 rounded-full px-4 py-1 border border-ambar-dim">
+        <div v-if="scenario.pozo_bb != null" class="bg-felt-950/70 rounded-full px-4 py-1 border border-ambar-dim">
           <span class="text-[11px] uppercase tracking-wider text-naipe/50 mr-2">{{ $t('gimnasio.pozo') }}</span>
           <span class="font-num text-ambar font-semibold">{{ scenario.pozo_bb }} BB</span>
         </div>
@@ -74,7 +74,7 @@ function rolName (rol) {
         </div>
         <div class="bg-felt-900 border border-ambar rounded-xl px-4 py-1.5 text-center">
           <p class="text-sm font-semibold text-ambar">{{ $t('posicion.' + scenario.posicion_heroe) }}</p>
-          <p class="font-num text-sm">
+          <p v-if="scenario.stack_bb != null" class="font-num text-sm">
             <span class="text-naipe/50 text-[11px] uppercase tracking-wider mr-1">{{ $t('gimnasio.stack') }}</span>
             {{ scenario.stack_bb }} BB
           </p>

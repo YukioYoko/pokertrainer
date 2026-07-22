@@ -10,6 +10,8 @@ const props = defineProps({
 })
 
 const win = computed(() => props.equity >= props.potOdds)
+// Probabilidad de que el rival tenga la mejor mano (complemento de tu equidad).
+const villano = computed(() => Math.max(0, 1 - props.equity))
 const pct = (x) => Math.round(x * 1000) / 10
 const clamp = (x) => Math.min(100, Math.max(0, x * 100))
 </script>
@@ -47,6 +49,9 @@ const clamp = (x) => Math.min(100, Math.max(0, x * 100))
       <span :class="win ? 'text-gana font-semibold' : 'text-pierde font-semibold'">
         {{ win ? $t('evalbar.rentable') : $t('evalbar.noRentable') }}
       </span>
+    </p>
+    <p class="text-xs text-naipe/50 mt-1 font-num">
+      {{ $t('evalbar.rivalMejor') }} <b class="text-pierde/90">{{ pct(villano) }}%</b>
     </p>
   </div>
 </template>

@@ -16,7 +16,9 @@
     "vacio": "Aún no has resuelto ninguna mano. Tu precisión aparecerá aquí.",
     "modoCashDesc": "River: ¿Call o Fold? · {n} manos",
     "modoMano": "Mano Completa",
-    "modoManoDesc": "Flop → Turn → River con repaso · {n} manos"
+    "modoManoDesc": "Flop → Turn → River con repaso · {n} manos",
+    "modoOuts": "Calcular Outs",
+    "modoOutsDesc": "¿Probabilidad de ligar tu proyecto? · {n} manos"
   },
   "gimnasio": {
     "pozo": "Pozo",
@@ -50,13 +52,20 @@
     "repaso": "Repaso de la mano",
     "siguienteMano": "Siguiente mano",
     "decisiones": "{ok} de {total} decisiones correctas",
+    "terminada": "Te retiraste en el {calle}: la mano termina ahí.",
     "vacio": "Aún no hay manos completas en la base. Regenera con python build.py --n-hands N."
+  },
+  "outs": {
+    "outs": "{n} outs",
+    "fallo": "No era esa",
+    "vacio": "Aún no hay ejercicios de outs en la base. Regenera con python build.py --n-outs N."
   },
   "evalbar": {
     "tienes": "Tienes",
     "necesitas": "necesitas",
     "rentable": "pagar rinde",
-    "noRentable": "no rinde"
+    "noRentable": "no rinde",
+    "rivalMejor": "El rival tiene la mejor mano:"
   },
   "resumen": {
     "titulo": "Sesión completada",

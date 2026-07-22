@@ -16,7 +16,9 @@
     "vacio": "You haven't solved any hands yet. Your accuracy will show up here.",
     "modoCashDesc": "River: Call or Fold? · {n} hands",
     "modoMano": "Full Hand",
-    "modoManoDesc": "Flop → Turn → River with review · {n} hands"
+    "modoManoDesc": "Flop → Turn → River with review · {n} hands",
+    "modoOuts": "Count Outs",
+    "modoOutsDesc": "Odds to complete your draw? · {n} hands"
   },
   "gimnasio": {
     "pozo": "Pot",
@@ -50,13 +52,20 @@
     "repaso": "Hand review",
     "siguienteMano": "Next hand",
     "decisiones": "{ok} of {total} decisions correct",
+    "terminada": "You folded on the {calle}: the hand ends there.",
     "vacio": "No full hands in the database yet. Regenerate with python build.py --n-hands N."
+  },
+  "outs": {
+    "outs": "{n} outs",
+    "fallo": "Not that one",
+    "vacio": "No outs exercises in the database yet. Regenerate with python build.py --n-outs N."
   },
   "evalbar": {
     "tienes": "You have",
     "necesitas": "you need",
     "rentable": "call profits",
-    "noRentable": "no profit"
+    "noRentable": "no profit",
+    "rivalMejor": "Villain has the best hand:"
   },
   "resumen": {
     "titulo": "Session complete",
