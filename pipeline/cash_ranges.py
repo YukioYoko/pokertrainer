@@ -12,7 +12,7 @@
 """
 from __future__ import annotations
 
-import eval7
+import handeval as eval7   # adaptador puro-Python (treys) con API estilo eval7
 
 import poker_math as pm
 

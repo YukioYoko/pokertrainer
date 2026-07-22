@@ -8,7 +8,7 @@ from __future__ import annotations
 import random
 from typing import Iterable
 
-import eval7
+import handeval as eval7   # adaptador puro-Python (treys) con API estilo eval7
 
 RANKS = "23456789TJQKA"
 SUITS = "cdhs"

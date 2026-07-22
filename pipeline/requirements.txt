@@ -1,2 +1,2 @@
 anthropic>=0.40
-eval7>=0.1.10
+treys>=0.1.8

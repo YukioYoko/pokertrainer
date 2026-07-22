@@ -49,10 +49,10 @@ Two independent scenario generators, both producing the same scenario schema (wi
 
 2. **Cash Game (Cash)** — river, single bet, 100 BB.
    - Correct action is derived purely from `equity >= pot_odds` → Call, else Fold.
-   - [pipeline/cash_ranges.py](pipeline/cash_ranges.py) builds the villain's river betting range as a *verifiable construction*: value combos (two pair+ or strong top pair, classified exactly with eval7) plus the weakest air combos added in exactly the Janda value:bluff ratio for the bet size.
+   - [pipeline/cash_ranges.py](pipeline/cash_ranges.py) builds the villain's river betting range as a *verifiable construction*: value combos (two pair+ or strong top pair, classified exactly by the hand evaluator) plus the weakest air combos added in exactly the Janda value:bluff ratio for the bet size.
    - [pipeline/cash_math.py](pipeline/cash_math.py) provides MDF, the Janda `value_bluff_ratio`, and exact river equity.
 
-Shared math lives in [pipeline/poker_math.py](pipeline/poker_math.py): eval7-backed equity (Monte Carlo `equity_vs_range` for pre-flop, exact enumeration `equity_river_exact` for the river), pot odds, SPR, hand-notation helpers. All seeded/deterministic.
+Shared math lives in [pipeline/poker_math.py](pipeline/poker_math.py): hand-evaluator-backed equity (Monte Carlo `equity_vs_range` for pre-flop, exact enumeration `equity_river_exact` for the river), pot odds, SPR, hand-notation helpers. All seeded/deterministic. The evaluator is [pipeline/handeval.py](pipeline/handeval.py) — a thin eval7-API-compatible shim over the pure-Python `treys` (so no C compiler / MSVC is needed; `import handeval as eval7`). Rankings are identical to eval7; treys' 1-is-best scale is inverted so higher score = better.
 
 [pipeline/validate.py](pipeline/validate.py) is the gatekeeper — `build.py` runs it last and drops any scenario that fails. Critically, it **re-derives the correct answer from the source of truth** (re-runs `nash.correct_action` for Torneo, re-checks `equity >= pot_odds` for Cash) and discards mismatches, plus checks schema, card validity, and that every narrative field has both `es` and `en`.
 

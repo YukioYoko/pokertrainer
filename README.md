@@ -36,7 +36,7 @@ el idioma (ES/EN) se cambia con el botón de la cabecera.
 ## Regenerar los escenarios (pipeline — opcional)
 
 Solo necesario si quieres volver a generar `scenarios_db.json`. La matemática
-(eval7 Monte Carlo) y la decisión correcta (tabla Nash embebida) las calcula el
+(Monte Carlo con el evaluador `treys`, puro Python) y la decisión correcta (tabla Nash embebida) las calcula el
 código; el LLM (API Anthropic) solo redacta las explicaciones ES+EN. Con
 `--offline` funciona sin API usando plantillas. `validate.py` descarta todo
 escenario incoherente.
