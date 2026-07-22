@@ -113,6 +113,45 @@ def build_river_bet_range(
     return value + bluffs, info
 
 
+def build_street_bet_range(
+    villain_pos: str,
+    board: list[str],
+    hero: list[str],
+    bluff_fraction: float,
+) -> tuple[list[tuple[str, str]], dict]:
+    """Rango de apuesta del villano en una calle cualquiera (flop/turn/river).
+
+    Construcción verificable análoga a build_river_bet_range, pero con una
+    definición de valor más amplia apta para calles tempranas: VALOR = cualquier
+    mano hecha (pareja o mejor) en el board parcial; AIRE = sin pareja. Se añaden
+    los combos de aire más débiles como faroles en la proporción de Janda para
+    el tamaño de apuesta (bluff_fraction), igual que en el river. En flop/turn el
+    board tiene 3-4 cartas; eval7 clasifica igual la fuerza actual.
+    """
+    dead = set(hero) | set(board)
+    combos = [c for c in pm.expand_range(OPEN_RANGES[villain_pos])
+              if c[0] not in dead and c[1] not in dead]
+
+    value, air = [], []
+    for c in combos:
+        level, score = _strength(c, board)
+        if level >= 1:                 # cualquier pareja hecha o mejor
+            value.append(c)
+        else:
+            air.append((score, c))
+
+    air.sort(key=lambda x: x[0])       # los más débiles primero
+    n_bluffs = round(len(value) * bluff_fraction / (1 - bluff_fraction)) \
+        if bluff_fraction < 1 else 0
+    bluffs = [c for _, c in air[:n_bluffs]]
+
+    info = {"n_value": len(value), "n_bluffs": len(bluffs),
+            "bluff_fraction_real": round(
+                len(bluffs) / (len(value) + len(bluffs)), 4)
+            if value or bluffs else 0.0}
+    return value + bluffs, info
+
+
 def build_cold_call_range(
     villain_pos: str,
     board: list[str],

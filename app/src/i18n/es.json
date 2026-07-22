@@ -14,7 +14,9 @@
     "modoCash": "Modo Cash Games",
     "proximamente": "Próximamente",
     "vacio": "Aún no has resuelto ninguna mano. Tu precisión aparecerá aquí.",
-    "modoCashDesc": "River: ¿Call o Fold? · {n} manos"
+    "modoCashDesc": "River: ¿Call o Fold? · {n} manos",
+    "modoMano": "Mano Completa",
+    "modoManoDesc": "Flop → Turn → River con repaso · {n} manos"
   },
   "gimnasio": {
     "pozo": "Pozo",
@@ -41,6 +43,14 @@
     "titulo": "Glosario",
     "intro": "Términos que aparecen en las explicaciones de cada mano.",
     "cerrar": "Cerrar"
+  },
+  "manoCompleta": {
+    "mano": "Mano {actual} de {total}",
+    "apuesta": "El {pos} apuesta {bet} BB",
+    "repaso": "Repaso de la mano",
+    "siguienteMano": "Siguiente mano",
+    "decisiones": "{ok} de {total} decisiones correctas",
+    "vacio": "Aún no hay manos completas en la base. Regenera con python build.py --n-hands N."
   },
   "evalbar": {
     "tienes": "Tienes",

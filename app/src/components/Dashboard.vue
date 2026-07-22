@@ -64,6 +64,22 @@ const s = computed(() => stats())
         </span>
         <span class="text-naipe/30 text-xl" aria-hidden="true">›</span>
       </button>
+
+      <button
+        class="w-full flex items-center gap-4 text-left bg-felt-700 hover:bg-felt-600 border border-felt-600
+               rounded-2xl p-5 transition-colors
+               focus-visible:outline focus-visible:outline-2 focus-visible:outline-ambar"
+        @click="$emit('start', 'Mano Completa')"
+      >
+        <span class="text-2xl w-11 h-11 shrink-0 grid place-items-center rounded-xl bg-felt-950/60 border border-felt-600">🎬</span>
+        <span class="flex-1">
+          <span class="block text-lg font-semibold">{{ $t('dashboard.modoMano') }}</span>
+          <span class="block text-sm text-naipe/60 mt-0.5">
+            {{ $t('dashboard.modoManoDesc', { n: counts.manos }) }}
+          </span>
+        </span>
+        <span class="text-naipe/30 text-xl" aria-hidden="true">›</span>
+      </button>
     </div>
   </section>
 </template>

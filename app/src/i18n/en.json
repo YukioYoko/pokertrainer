@@ -14,7 +14,9 @@
     "modoCash": "Cash Game Mode",
     "proximamente": "Coming soon",
     "vacio": "You haven't solved any hands yet. Your accuracy will show up here.",
-    "modoCashDesc": "River: Call or Fold? · {n} hands"
+    "modoCashDesc": "River: Call or Fold? · {n} hands",
+    "modoMano": "Full Hand",
+    "modoManoDesc": "Flop → Turn → River with review · {n} hands"
   },
   "gimnasio": {
     "pozo": "Pot",
@@ -41,6 +43,14 @@
     "titulo": "Glossary",
     "intro": "Terms that show up in the explanation of each hand.",
     "cerrar": "Close"
+  },
+  "manoCompleta": {
+    "mano": "Hand {actual} of {total}",
+    "apuesta": "The {pos} bets {bet} BB",
+    "repaso": "Hand review",
+    "siguienteMano": "Next hand",
+    "decisiones": "{ok} of {total} decisions correct",
+    "vacio": "No full hands in the database yet. Regenerate with python build.py --n-hands N."
   },
   "evalbar": {
     "tienes": "You have",

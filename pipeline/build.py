@@ -16,6 +16,7 @@ import sys
 import cash_generator
 import explain
 import generator
+import hand_generator
 import validate
 
 
@@ -42,6 +43,8 @@ def main() -> int:
                     help="nº de escenarios de Torneo de overcall (pagar un jam)")
     ap.add_argument("--n-multiway", type=int, default=0,
                     help="nº de escenarios de Cash a 3 bandas (river)")
+    ap.add_argument("--n-hands", type=int, default=0,
+                    help="nº de escenarios de Mano Completa (flop→turn→river)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--out", default="scenarios_db.json")
@@ -83,7 +86,15 @@ def main() -> int:
             _redact(mw, args.offline, "Cash/3-bandas")
             scenarios += mw
 
-    print("[3] Validando esquema y coherencia...")
+    if args.n_hands > 0:
+        print(f"[3] Generando {args.n_hands} escenarios de Mano Completa "
+              f"(seed={args.seed + 3000})...")
+        hands = hand_generator.generate(args.n_hands, args.seed + 3000)
+        print(f"    {len(hands)} crudos")
+        _redact(hands, args.offline, "Mano Completa")
+        scenarios += hands
+
+    print("[4] Validando esquema y coherencia...")
     ok, log = validate.filter_valid(scenarios)
     for line in log[:20]:
         print(f"    DESCARTADO {line}")
@@ -91,7 +102,7 @@ def main() -> int:
         print(f"    (+{len(log) - 20} más)")
     print(f"    {len(ok)} válidos / {len(scenarios)} generados")
 
-    print(f"[4] Escribiendo {args.out}...")
+    print(f"[5] Escribiendo {args.out}...")
     with open(args.out, "w", encoding="utf-8") as f:
         json.dump({"version": 2, "escenarios": ok}, f,
                   ensure_ascii=False, indent=1)

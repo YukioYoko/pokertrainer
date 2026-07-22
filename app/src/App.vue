@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Dashboard from './components/Dashboard.vue'
 import Gimnasio from './components/Gimnasio.vue'
+import ManoCompleta from './components/ManoCompleta.vue'
 import Glossary from './components/Glossary.vue'
 import { load, progress, setLocale } from './stores/progress.js'
 
@@ -17,7 +18,8 @@ const scenarios = computed(() =>
   all.value.filter(s => s.modo === mode.value))
 const counts = computed(() => ({
   torneo: all.value.filter(s => s.modo === 'Torneo').length,
-  cash: all.value.filter(s => s.modo === 'Cash Game').length
+  cash: all.value.filter(s => s.modo === 'Cash Game').length,
+  manos: all.value.filter(s => s.modo === 'Mano Completa').length
 }))
 
 function start (m) {
@@ -72,6 +74,12 @@ async function toggleLocale () {
         v-if="view === 'dashboard' && ready"
         :counts="counts"
         @start="start"
+      />
+      <ManoCompleta
+        v-else-if="mode === 'Mano Completa'"
+        :key="mode"
+        :scenarios="scenarios"
+        @exit="view = 'dashboard'"
       />
       <Gimnasio
         v-else

@@ -336,7 +336,72 @@ def _offline_cash(s: dict) -> dict:
     }
 
 
+def _offline_hand(s: dict) -> dict:
+    """Repaso paso a paso determinista de una mano completa (flop→turn→river).
+
+    Devuelve `contexto` (introducción), `calles` (cada nodo con su `explicacion`
+    es/en) y `resumen` (veredicto global). No usa LLM: multi-nodo, siempre
+    disponible y coherente con la matemática ya calculada por hand_generator.
+    """
+    m = s["_meta"]
+    hand = m["hand"]
+    vpos_es, vpos_en = m["pos_label"]["es"], m["pos_label"]["en"]
+
+    ctx_es = (f"Defiendes la Ciega Grande con {hand} frente a un open del "
+              f"{vpos_es}, mano a mano y 100 BB. Juegas flop, turn y river: en "
+              f"cada calle decides Call o Fold. Al terminar repasamos cada "
+              f"decisión comparando tu equidad con las pot odds.")
+    ctx_en = (f"You defend the Big Blind with {hand} against a {vpos_en} open, "
+              f"heads-up and 100 BB deep. You play flop, turn and river: each "
+              f"street you choose Call or Fold. Afterwards we review every "
+              f"decision comparing your equity to the pot odds.")
+
+    calles_out = []
+    for nd in s["calles"]:
+        eq = round(nd["math"]["equity"] * 100, 1)
+        po = round(nd["math"]["pot_odds"] * 100, 1)
+        bet = nd["villano_apuesta_bb"]
+        pot = nd["pozo_previo_bb"]
+        nv = nd["_rango"]["n_value"]
+        nb = nd["_rango"]["n_bluffs"]
+        call = nd["opcion_correcta_index"] == 1
+        calle = nd["calle"]
+        veredicto_es = ("pagar es correcto: tienes el precio"
+                        if call else "lo correcto es foldear: no tienes precio")
+        veredicto_en = ("calling is correct: you have the price"
+                        if call else "folding is correct: you lack the price")
+        ex_es = (f"{calle}: el villano apuesta {bet} BB a un pozo de {pot} BB, "
+                 f"así que necesitas {po}% de equidad y tienes {eq}% frente a "
+                 f"su rango ({nv} manos de valor, {nb} faroles). Por eso "
+                 f"{veredicto_es}.")
+        ex_en = (f"{calle}: villain bets {bet} BB into a {pot} BB pot, so you "
+                 f"need {po}% equity and you have {eq}% against their range "
+                 f"({nv} value hands, {nb} bluffs). That is why {veredicto_en}.")
+        clean = {k: v for k, v in nd.items() if k != "_rango"}
+        clean["explicacion"] = {"es": ex_es, "en": ex_en}
+        calles_out.append(clean)
+
+    n_call = sum(1 for nd in s["calles"] if nd["opcion_correcta_index"] == 1)
+    n_fold = len(s["calles"]) - n_call
+    res_es = (f"En esta mano la línea correcta era pagar {n_call} calle(s) y "
+              f"foldear {n_fold}. La clave en cada punto es la misma: ¿tu "
+              f"equidad supera las pot odds que te ofrece la apuesta? Si en "
+              f"alguna calle pagaste sin precio, ahí se fuga tu EV.")
+    res_en = (f"In this hand the correct line was to call {n_call} street(s) "
+              f"and fold {n_fold}. The key at every point is the same: does "
+              f"your equity beat the pot odds the bet lays? Any street you "
+              f"called without the price is where your EV leaks.")
+
+    return {
+        "contexto": {"es": ctx_es, "en": ctx_en},
+        "calles": calles_out,
+        "resumen": {"es": res_es, "en": res_en},
+    }
+
+
 def explain(s: dict, offline: bool = False) -> dict:
+    if s.get("tipo") == "hand_full":
+        return _offline_hand(s)        # multi-nodo determinista (sin LLM)
     if offline or not os.environ.get("ANTHROPIC_API_KEY"):
         return explain_offline(s)
     try:

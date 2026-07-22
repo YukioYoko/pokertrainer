@@ -20,6 +20,9 @@ CAPAS = {"matematica_rapida", "psicologia_y_rangos", "control_y_conclusion"}
 
 
 def check(s: dict) -> list[str]:
+    if s.get("tipo") == "hand_full":
+        return _check_hand(s)
+
     errors: list[str] = []
 
     for key in ("id", "modo", "fase", "dificultad", "posicion_heroe",
@@ -150,6 +153,66 @@ def _check_cash(s: dict) -> list[str]:
         errors.append(
             f"decisión incoherente con equity vs pot_odds "
             f"({s['opcion_correcta_index']} != {expected})")
+    return errors
+
+
+def _check_hand(s: dict) -> list[str]:
+    """Mano completa (flop→turn→river). Cada calle es una decisión Call/Fold
+    cuya corrección se re-verifica con equity >= pot_odds, más consistencia de
+    board por calle y presencia bilingüe del repaso paso a paso."""
+    errors = []
+    for key in ("id", "modo", "tipo", "dificultad", "posicion_heroe",
+                "posicion_villano", "cartas_heroe", "board", "stack_bb",
+                "pozo_bb", "opciones", "calles", "contexto", "resumen",
+                "leak_tags"):
+        if key not in s:
+            errors.append(f"falta clave '{key}'")
+    if errors:
+        return errors
+
+    if s["modo"] != "Mano Completa":
+        errors.append("modo debe ser 'Mano Completa'")
+    if s["dificultad"] not in DIFFS:
+        errors.append("dificultad inválida")
+    if s["opciones"] != ["Fold", "Call"]:
+        errors.append("opciones inválidas (solo Fold/Call)")
+
+    cards = s["cartas_heroe"]
+    board = s["board"]
+    all_cards = cards + board
+    if (len(cards) != 2 or len(board) != 5
+            or len(set(all_cards)) != len(all_cards)
+            or any(c not in VALID_CARDS for c in all_cards)):
+        errors.append("cartas inválidas o duplicadas")
+
+    calles = s["calles"]
+    if not isinstance(calles, list) or len(calles) != 3:
+        errors.append("la mano requiere exactamente 3 calles")
+        return errors
+    for i, (nd, name) in enumerate(zip(calles, ("Flop", "Turn", "River"))):
+        if nd.get("calle") != name:
+            errors.append(f"calle {i} debe ser {name}")
+        if nd.get("board") != board[:3 + i]:
+            errors.append(f"board de {name} incoherente con el runout")
+        m = nd.get("math", {})
+        if not (0 <= m.get("equity", -1) <= 1):
+            errors.append(f"equity fuera de 0..1 en {name}")
+        if not (0 <= m.get("pot_odds", -1) <= 1):
+            errors.append(f"pot_odds fuera de 0..1 en {name}")
+        expected = 1 if m.get("equity", 0) >= m.get("pot_odds", 1) else 0
+        if nd.get("opcion_correcta_index") != expected:
+            errors.append(
+                f"decisión de {name} incoherente con equity vs pot_odds "
+                f"({nd.get('opcion_correcta_index')} != {expected})")
+        ex = nd.get("explicacion", {})
+        if not (isinstance(ex, dict) and ex.get("es") and ex.get("en")):
+            errors.append(f"explicacion de {name} sin es/en")
+
+    for campo in ("contexto", "resumen"):
+        v = s.get(campo, {})
+        if not (isinstance(v, dict) and v.get("es") and v.get("en")):
+            errors.append(f"{campo} sin es/en")
+
     return errors
 
 

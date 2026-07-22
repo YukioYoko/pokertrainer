@@ -94,6 +94,45 @@ def equity_vs_range(
     return round((wins + ties / 2) / total, 4)
 
 
+def equity_vs_combos_mc(
+    hero: list[str],
+    villain_combos: list[tuple[str, str]],
+    board: list[str],
+    iters: int = 12000,
+    seed: int = 7,
+) -> float:
+    """Equidad del héroe vs combos concretos con board PARCIAL (flop/turn).
+
+    Monte Carlo: reparte las cartas comunitarias que faltan hasta 5 y compara
+    showdowns contra cada combo del rango del villano. Para el river (board de
+    5) usar equity_river_exact (enumeración exacta). Devuelve 0..1."""
+    rng = random.Random(seed)
+    hero_cards = [_CARD[c] for c in hero]
+    board_cards = [_CARD[c] for c in board]
+    dead = set(hero) | set(board)
+    combos = [(_CARD[a], _CARD[b], a, b)
+              for a, b in villain_combos if a not in dead and b not in dead]
+    if not combos:
+        return 0.0
+    deck_master = [c for c in _CARD if c not in dead]
+    need = 5 - len(board)
+    wins = ties = total = 0
+    for _ in range(iters):
+        ca, cb, a, b = combos[rng.randrange(len(combos))]
+        runout = board_cards + [
+            _CARD[c] for c in rng.sample(deck_master, need + 2)
+            if c not in (a, b)
+        ][:need]
+        h = eval7.evaluate(hero_cards + runout)
+        vv = eval7.evaluate([ca, cb] + runout)
+        if h > vv:
+            wins += 1
+        elif h == vv:
+            ties += 1
+        total += 1
+    return round((wins + ties / 2) / total, 4)
+
+
 def equity_river_exact(
     hero: list[str],
     villain_combos: list[tuple[str, str]],
