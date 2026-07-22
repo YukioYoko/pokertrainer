@@ -118,6 +118,62 @@ def equity_river_exact(
     return round((wins + ties / 2) / total, 4) if total else 0.0
 
 
+def equity_river_exact_multiway(
+    hero: list[str],
+    villain_ranges: list[list[tuple[str, str]]],
+    board: list[str],
+) -> float:
+    """Equidad EXACTA del héroe en el river contra 2+ rivales a la vez.
+
+    Enumera el producto cartesiano de los rangos (un combo por rival,
+    descartando choques de cartas entre ellos y con héroe/board) y para
+    cada showdown reparte el bote entre TODOS los que empatan por la mejor
+    mano. La equidad del héroe = fracción esperada del bote que se lleva
+    (gana entero si su mano supera a todos; comparte si empata; 0 si pierde).
+    Sin Monte Carlo, sin solver: solo enumeración y comparación de eval7.
+    """
+    hero_cards = [_CARD[c] for c in hero]
+    board_cards = [_CARD[c] for c in board]
+    dead = set(hero) | set(board)
+    h = eval7.evaluate(hero_cards + board_cards)
+
+    ranges = [[(a, b) for a, b in r if a not in dead and b not in dead]
+              for r in villain_ranges]
+    if not ranges or any(not r for r in ranges):
+        return 0.0
+
+    share_sum = 0.0
+    total = 0
+
+    def _walk(i: int, used: set, best: int, tied: int):
+        nonlocal share_sum, total
+        if i == len(ranges):
+            if best > h:            # algún rival supera al héroe
+                pass
+            elif best == h:         # héroe empata por la mejor mano
+                share_sum += 1.0 / (tied + 1)
+            else:                   # héroe tiene la mejor mano en solitario
+                share_sum += 1.0
+            total += 1
+            return
+        for a, b in ranges[i]:
+            if a in used or b in used:
+                continue
+            v = eval7.evaluate([_CARD[a], _CARD[b]] + board_cards)
+            if v > best:
+                nb, nt = v, 1
+            elif v == best:
+                nb, nt = best, tied + 1
+            else:
+                nb, nt = best, tied
+            used.add(a); used.add(b)
+            _walk(i + 1, used, nb, nt)
+            used.discard(a); used.discard(b)
+
+    _walk(0, set(), -1, 0)
+    return round(share_sum / total, 4) if total else 0.0
+
+
 # ------------------------------------------------------------- aritmética ---
 def pot_odds(to_call_bb: float, pot_bb: float) -> float:
     """Equidad mínima requerida para pagar: call / (pot + call). 0..1."""

@@ -36,6 +36,12 @@
     "siguiente": "Siguiente mano",
     "verResumen": "Ver resumen"
   },
+  "glosario": {
+    "boton": "Glosario",
+    "titulo": "Glosario",
+    "intro": "Términos que aparecen en las explicaciones de cada mano.",
+    "cerrar": "Cerrar"
+  },
   "resumen": {
     "titulo": "Sesión completada",
     "aciertos": "{ok} de {total} correctas",
@@ -52,6 +58,8 @@
     "BB": "Ciega Grande",
     "BTN": "Botón",
     "CO": "Cutoff",
-    "HJ": "Hijack"
+    "HJ": "Hijack",
+    "MP": "Posición Media",
+    "UTG": "Under the Gun"
   }
 }

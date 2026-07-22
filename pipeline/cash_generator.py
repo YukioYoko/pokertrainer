@@ -117,6 +117,7 @@ def generate(n: int = 100, seed: int = 1042) -> list[dict]:
         scenarios.append({
             "id": f"cash_rv_{len(scenarios) + 1:04d}",
             "modo": "Cash Game",
+            "tipo": "river_hu",
             "fase": "River",
             "dificultad": diff,
             "posicion_heroe": "BB",
@@ -155,6 +156,110 @@ def _leak_tags(correct: int, diff: str) -> list[str]:
     if diff == "Avanzado":
         tags.append("spot_borderline")
     return tags
+
+
+def generate_multiway(n: int = 60, seed: int = 2042) -> list[dict]:
+    """Escenarios de Cash a 3 bandas en el river (héroe último en actuar).
+
+    Un rival AGRESOR apuesta y un segundo rival PAGADOR iguala en frío; el
+    héroe cierra la acción. La corrección se deriva EXCLUSIVAMENTE de:
+        Call si equity_multiway >= pot_odds, si no Fold.
+    donde equity_multiway es la enumeración exacta del héroe contra AMBOS
+    rangos a la vez (poker_math.equity_river_exact_multiway) y pot_odds es
+    la fracción del bote a 3 bandas. Sin solver: solo enumeración.
+    """
+    rng = random.Random(seed)
+    scenarios: list[dict] = []
+    seen: set[tuple] = set()
+    quota = {"Principiante": 0, "Intermedio": 0, "Avanzado": 0}
+    target = {"Principiante": n // 3, "Intermedio": n // 3,
+              "Avanzado": n - 2 * (n // 3)}
+
+    attempts = 0
+    while len(scenarios) < n and attempts < n * 1500:
+        attempts += 1
+        agr, pag = rng.sample(VILLAIN_POSITIONS, 2)   # agresor y pagador
+        pot = rng.choice(POTS_BB)                      # bote base al river
+        frac = rng.choice(BET_SIZES)
+        bet = round(pot * frac, 2)
+        hand = rng.choice(HERO_HANDS)
+
+        board = _deal_board(rng, set())
+        hero = _deal_hand(hand, rng, set(board))
+        if hero is None:
+            continue
+
+        # El héroe debe ir con algo intermedio: es donde la decisión existe.
+        level, _ = cr._strength((hero[0], hero[1]), board)
+        if level == 0 or level > 2:
+            continue
+
+        dead = set(hero) | set(board)
+        bluff_frac = cm.value_bluff_ratio(bet, pot)
+        agr_combos, agr_info = cr.build_river_bet_range(agr, board, hero,
+                                                        bluff_frac)
+        pag_combos, pag_info = cr.build_cold_call_range(pag, board, dead)
+        if agr_info["n_value"] < 8 or pag_info["n_call"] < 6:
+            continue
+
+        equity = pm.equity_river_exact_multiway(
+            hero, [agr_combos, pag_combos], board)
+        # Bote a 3 bandas: base + apuesta del agresor + call del pagador.
+        pot_visible = round(pot + 2 * bet, 2)
+        podds = pm.pot_odds(bet, pot + 2 * bet)
+        correct = 1 if equity >= podds else 0
+
+        diff = _difficulty(equity, podds)
+        if quota[diff] >= target[diff]:
+            continue
+        key = (agr, pag, hand, tuple(sorted(board)), pot, frac)
+        if key in seen:
+            continue
+        seen.add(key)
+        quota[diff] += 1
+
+        scenarios.append({
+            "id": f"cash_rv3_{len(scenarios) + 1:04d}",
+            "modo": "Cash Game",
+            "tipo": "river_3way",
+            "fase": "River",
+            "dificultad": diff,
+            "posicion_heroe": "BB",
+            "posicion_villano": agr,                # agresor (compatibilidad)
+            "oponentes": [
+                {"posicion": agr, "rol": "agresor", "pos_label": POS_LABEL[agr]},
+                {"posicion": pag, "rol": "pagador", "pos_label": POS_LABEL[pag]},
+            ],
+            "asientos_vacios": 0,
+            "stack_bb": max(round(100 - pot - 2 * bet, 2), 1),
+            "pozo_bb": pot_visible,
+            "cartas_heroe": hero,
+            "board": board,
+            "opciones": ["Fold", "Call"],
+            "opcion_correcta_index": correct,
+            "math": {
+                "equity": equity,
+                "pot_odds": podds,
+                "spr": pm.spr(100 - pot / 2, pot_visible),
+                "outs": 0,
+                "mdf": cm.mdf(bet, pot),
+                "value_bluff_ratio": bluff_frac,
+            },
+            "leak_tags": _leak_tags(correct, diff) + ["multiway_river"],
+            "_meta": {
+                "hand": hand,
+                "pos_label": POS_LABEL[agr],
+                "pos_label_heroe": POS_LABEL["BB"],
+                "pos_label_pagador": POS_LABEL[pag],
+                "bet_bb": bet,
+                "pot_before_bet_bb": pot,
+                "bet_fraction": frac,
+                "n_oponentes": 2,
+                "rango": agr_info,
+                "rango_pagador": pag_info,
+            },
+        })
+    return scenarios
 
 
 if __name__ == "__main__":

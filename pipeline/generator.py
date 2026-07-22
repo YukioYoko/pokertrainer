@@ -118,10 +118,17 @@ def generate(n: int = 100, seed: int = 42, equity_iters: int = 8000) -> list[dic
         scenarios.append({
             "id": f"mtt_pf_{len(scenarios) + 1:04d}",
             "modo": "Torneo",
+            "tipo": "push_fold",
             "fase": "Pre-Flop",
             "dificultad": diff,
             "posicion_heroe": pos,
             "posicion_villano": "BB",
+            # Cosmético: el BB es el único villano modelado; los demás asientos
+            # por hablar se pintan vacíos para comunicar el jam contra la mesa.
+            "oponentes": [
+                {"posicion": "BB", "rol": "ciega", "pos_label": POS_LABEL_BB},
+            ],
+            "asientos_vacios": max(PLAYERS_BEHIND[pos] - 1, 0),
             "stack_bb": stack,
             "pozo_bb": pot,
             "cartas_heroe": hero_cards,
@@ -142,6 +149,112 @@ def generate(n: int = 100, seed: int = 42, equity_iters: int = 8000) -> list[dic
                 "players_behind": PLAYERS_BEHIND[pos],
                 "ante_bb": ante,
                 "players": players,
+            },
+        })
+    return scenarios
+
+
+# Posiciones desde las que un rival puede ir all-in en un spot de overcall
+# (el héroe cierra en la BB; excluimos SB para que su ciega quede muerta).
+JAMMER_POSITIONS = ["UTG", "MP", "HJ", "CO", "BTN"]
+SEATS_BETWEEN = {"UTG": 5, "MP": 4, "HJ": 3, "CO": 2, "BTN": 1}
+POS_LABEL_BB = {"es": "Ciega Grande", "en": "Big Blind"}
+
+
+def generate_overcall(n: int = 60, seed: int = 77, equity_iters: int = 8000):
+    """Escenarios de Torneo donde el héroe (BB) PAGA o no un all-in rival.
+
+    Un rival va All-In desde 'jammer_pos', todos foldean y la acción cierra en
+    el héroe. La corrección se deriva EXCLUSIVAMENTE de:
+        Call si equity(héroe vs rango de jam) >= pot_odds, si no Fold.
+    El rango de jam se deriva de nash.jam_range (misma fuente de verdad que el
+    push/fold); la equidad es Monte Carlo con eval7. Sin solver ni tabla nueva.
+    Es chip-EV (no ICM): decisión de pago pura, como corresponde al MVP.
+    """
+    rng = random.Random(seed)
+    hands = _all_hands()
+    scenarios: list[dict] = []
+    seen: set[tuple] = set()
+    quota = {"Principiante": 0, "Intermedio": 0, "Avanzado": 0}
+    target = {"Principiante": n // 3, "Intermedio": n // 3,
+              "Avanzado": n - 2 * (n // 3)}
+
+    attempts = 0
+    while len(scenarios) < n and attempts < n * 800:
+        attempts += 1
+        jammer = rng.choice(JAMMER_POSITIONS)
+        stack = round(rng.uniform(5, 15) * 2) / 2   # stack efectivo (ambos)
+        ante, players = ANTES[0], TABLE_SIZES[0]
+
+        jrange = nash.jam_range(jammer, stack)
+        if len(jrange) < 4:            # jam demasiado estrecho: sin decisión real
+            continue
+        hand = rng.choice(hands)
+        hero_cards = _deal(hand, rng)
+
+        equity = pm.equity_vs_range(
+            hero_cards, jrange, iters=equity_iters,
+            seed=seed + len(scenarios) + 1,
+        )
+        dead = round(0.5 + ante * players, 2)        # SB + antes muertos
+        to_call = round(stack - 1, 2)                # el BB ya puso 1 BB
+        pot_before = round(stack + 1 + dead, 2)      # jam + BB del héroe + dead
+        podds = pm.pot_odds(to_call, pot_before)
+        correct = 1 if equity >= podds else 0
+
+        dist = abs(equity - podds)
+        diff = ("Avanzado" if dist <= 0.04 else
+                "Intermedio" if dist <= 0.10 else "Principiante")
+        if quota[diff] >= target[diff]:
+            continue
+        key = (jammer, hand, stack)
+        if key in seen:
+            continue
+        seen.add(key)
+        quota[diff] += 1
+
+        tags = (["pago_ligero_vs_jam"] if correct == 0
+                else ["fold_excesivo_vs_jam"])
+        if diff == "Avanzado":
+            tags.append("spot_borderline")
+
+        scenarios.append({
+            "id": f"mtt_call_{len(scenarios) + 1:04d}",
+            "modo": "Torneo",
+            "tipo": "overcall",
+            "fase": "Pre-Flop",
+            "dificultad": diff,
+            "posicion_heroe": "BB",
+            "posicion_villano": jammer,
+            "oponentes": [
+                {"posicion": jammer, "rol": "agresor",
+                 "pos_label": POS_LABEL[jammer]},
+            ],
+            "asientos_vacios": SEATS_BETWEEN[jammer],
+            "stack_bb": stack,
+            "pozo_bb": round(pot_before + to_call, 2),  # bote si el héroe paga
+            "cartas_heroe": hero_cards,
+            "board": [],
+            "opciones": ["Fold", "Call"],
+            "opcion_correcta_index": correct,
+            "math": {
+                "equity": equity,
+                "pot_odds": podds,
+                "spr": pm.spr(stack, pot_before),
+                "outs": pm.outs_preflop(),
+            },
+            "leak_tags": tags,
+            "_meta": {
+                "hand": hand,
+                "threshold": nash.push_threshold(jammer, hand),
+                "pos_label": POS_LABEL[jammer],
+                "pos_label_heroe": POS_LABEL_BB,
+                "players_behind": 0,
+                "ante_bb": ante,
+                "players": players,
+                "jam_pos_label": POS_LABEL[jammer],
+                "n_jam_combos": len(jrange),
+                "to_call_bb": to_call,
             },
         })
     return scenarios

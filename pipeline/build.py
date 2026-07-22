@@ -38,6 +38,10 @@ def main() -> int:
                     help="nº de escenarios de Torneo (o de Cash si --modo cash)")
     ap.add_argument("--n-cash", type=int, default=None,
                     help="nº de escenarios de Cash cuando --modo ambos")
+    ap.add_argument("--n-overcall", type=int, default=0,
+                    help="nº de escenarios de Torneo de overcall (pagar un jam)")
+    ap.add_argument("--n-multiway", type=int, default=0,
+                    help="nº de escenarios de Cash a 3 bandas (river)")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--offline", action="store_true")
     ap.add_argument("--out", default="scenarios_db.json")
@@ -53,6 +57,14 @@ def main() -> int:
         _redact(mtt, args.offline, "Torneo")
         scenarios += mtt
 
+        if args.n_overcall > 0:
+            print(f"[1b] Generando {args.n_overcall} escenarios de overcall "
+                  f"(seed={args.seed + 500})...")
+            oc = generator.generate_overcall(args.n_overcall, args.seed + 500)
+            print(f"    {len(oc)} crudos")
+            _redact(oc, args.offline, "Torneo/overcall")
+            scenarios += oc
+
     if args.modo in ("cash", "ambos"):
         n_cash = args.n if args.modo == "cash" else (args.n_cash or args.n)
         print(f"[2] Generando {n_cash} escenarios de Cash "
@@ -61,6 +73,15 @@ def main() -> int:
         print(f"    {len(cash)} crudos")
         _redact(cash, args.offline, "Cash")
         scenarios += cash
+
+        if args.n_multiway > 0:
+            print(f"[2b] Generando {args.n_multiway} escenarios de Cash 3-bandas "
+                  f"(seed={args.seed + 2000})...")
+            mw = cash_generator.generate_multiway(args.n_multiway,
+                                                  args.seed + 2000)
+            print(f"    {len(mw)} crudos")
+            _redact(mw, args.offline, "Cash/3-bandas")
+            scenarios += mw
 
     print("[3] Validando esquema y coherencia...")
     ok, log = validate.filter_valid(scenarios)

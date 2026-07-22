@@ -36,6 +36,12 @@
     "siguiente": "Next hand",
     "verResumen": "See summary"
   },
+  "glosario": {
+    "boton": "Glossary",
+    "titulo": "Glossary",
+    "intro": "Terms that show up in the explanation of each hand.",
+    "cerrar": "Close"
+  },
   "resumen": {
     "titulo": "Session complete",
     "aciertos": "{ok} of {total} correct",
@@ -52,6 +58,8 @@
     "BB": "Big Blind",
     "BTN": "Button",
     "CO": "Cutoff",
-    "HJ": "Hijack"
+    "HJ": "Hijack",
+    "MP": "Middle Position",
+    "UTG": "Under the Gun"
   }
 }

@@ -173,3 +173,14 @@ def push_threshold(position: str, hand: str) -> float:
 def correct_action(position: str, hand: str, stack_bb: float) -> int:
     """0 = Fold, 1 = All-In. Única fuente de verdad del pipeline."""
     return 1 if stack_bb <= push_threshold(position, hand) else 0
+
+
+def jam_range(position: str, stack_bb: float) -> list[str]:
+    """Rango con el que 'position' va All-In a 'stack_bb' BB.
+
+    Se deriva de la MISMA tabla de umbrales (fuente de verdad única): una mano
+    entra en el rango de jam si su umbral de push es >= el stack efectivo.
+    Sirve para calcular la equidad real del héroe cuando decide PAGAR un jam
+    (spot de overcall), sin introducir ningún número nuevo inventado.
+    """
+    return [h for h, thr in TABLES[position].items() if thr >= stack_bb]

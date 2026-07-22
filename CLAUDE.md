@@ -61,7 +61,7 @@ Output shape: `{"version": 2, "escenarios": [...]}`. The internal `_meta` field 
 ### App: offline-first Vue
 
 - Single-page, two views toggled by state in [app/src/App.vue](app/src/App.vue): `Dashboard` (mode select) → `Gimnasio` (training session). Mode is `Torneo` | `Cash Game`; scenarios are filtered from the loaded DB by `modo`.
-- [app/src/components/Gimnasio.vue](app/src/components/Gimnasio.vue) runs a 10-hand session. The shuffle is **seeded by the current date** so a given day's session order is stable/reproducible. Answering reveals the `WhyCard` explanation.
+- [app/src/components/Gimnasio.vue](app/src/components/Gimnasio.vue) runs a 10-hand session. Session selection (`buildSession`) is **randomized and prioritizes unseen hands** — scenarios whose `id` is not yet in `progress.answered` come first (shuffled), falling back to already-played ones only once the unseen bank is exhausted, so sessions don't repeat. Answering reveals the `WhyCard` explanation.
 - [app/src/stores/progress.js](app/src/stores/progress.js) is the state layer — a Vue `reactive` object persisted via `@capacitor/preferences` (localStorage on web, native SharedPreferences on Android). Tracks daily streak, per-scenario answers, per-`leak_tag` failure counts (basis for a future "Leaks Analyzer"), and locale. This is where the **RevenueCat and Firebase integrations are stubbed** (TODO comments) — the app is fully functional offline without them.
 - i18n: Spanish is the priority/default and fallback locale ([app/src/main.js](app/src/main.js)). Scenario prose is stored bilingually inside each scenario (`accion_previa[locale]`, `desglose[locale]`), not in the i18n message files — the i18n JSON only covers UI chrome.
 - Styling: Tailwind with a custom "casino felt" dark palette (`felt`, `naipe`, `ambar`, `gana`, `pierde`) defined in [app/tailwind.config.js](app/tailwind.config.js).
@@ -69,4 +69,11 @@ Output shape: `{"version": 2, "escenarios": [...]}`. The internal `_meta` field 
 ## Conventions
 
 - Domain vocabulary and code identifiers are **Spanish** (`escenarios`, `posicion_heroe`, `pozo_bb`, `dificultad`, `opcion_correcta_index`, `desglose`). Match this when extending the scenario schema; both the pipeline and app depend on these exact keys.
-- Cash scenarios only ever offer `[Fold, Call]` and Torneo only `[Fold, All-In]` — Raise/other actions are intentionally excluded because their correctness isn't verifiable without a solver.
+- Each scenario carries a `tipo` discriminator; `validate.py` branches on it. Four variants exist, all still deriving the correct answer from a verifiable source (Regla de Oro):
+  - `push_fold` (Torneo, `[Fold, All-In]`) — hero jams; source of truth = `nash.correct_action`.
+  - `overcall` (Torneo, `[Fold, Call]`) — hero in BB **calls or folds vs a single all-in**. The jammer's range comes from `nash.jam_range` (same thresholds), and the call is derived from `equity_vs_range >= pot_odds` (chip-EV, not ICM). Added by `generator.generate_overcall`.
+  - `river_hu` (Cash, `[Fold, Call]`) — the original 1v1 river.
+  - `river_3way` (Cash, `[Fold, Call]`) — **3-way river**, hero closing vs an aggressor + a cold-caller. Equity = `poker_math.equity_river_exact_multiway` (exact enumeration of the union of both ranges; hero must beat all to win, splits handled), caller range = `cash_ranges.build_cold_call_range` (one-pair combos). Added by `cash_generator.generate_multiway`.
+  - Multiway/overcall are opt-in via `build.py --n-overcall N` / `--n-multiway N`.
+- Cash scenarios only ever offer `[Fold, Call]` and push/fold Torneo only `[Fold, All-In]` — Raise and live-multiway-with-open-action are intentionally excluded because their correctness isn't verifiable without a solver.
+- Presentation-only keys (do not affect any answer): `oponentes` (list of `{posicion, rol, pos_label}` villain badges) and `asientos_vacios` (int, dimmed empty seats). `PokerTable.vue` renders them, falling back to the single `posicion_villano` badge when `oponentes` is absent.

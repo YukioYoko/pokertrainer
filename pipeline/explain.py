@@ -30,6 +30,13 @@ SYSTEM = (
     "ratio valor:farol de Janda (value_bluff_ratio) para ese tamaño de apuesta; "
     "psicologia_y_rangos describe cómo se compone el rango de apuesta del villano "
     "(n_value combos de valor, n_bluffs faroles). "
+    "Si tipo=overcall (Torneo): el héroe está en la Ciega Grande y decide PAGAR o no un "
+    "All-In rival; accion_previa describe el jam desde posicion_jammer y que folden hasta él; "
+    "matematica_rapida interpreta equity vs pot odds para pagar a_pagar_bb (decisión chip-EV); "
+    "psicologia_y_rangos explica que el rango de jam (combos_de_jam) se deriva de los umbrales Nash. "
+    "Si tipo=river_3way (Cash): hay DOS rivales (agresor que apuesta y pagador que iguala en frío) "
+    "y el héroe cierra; recalca que debe superar a ambos, por lo que la equidad baja frente a la "
+    "unión de rango de apuesta y rango del pagador (rango_pagador). "
     "control_y_conclusion siempre: por qué la opción correcta supera a la otra y qué error "
     "conceptual comete quien elige mal. Cada capa: 2-3 frases."
 )
@@ -48,7 +55,17 @@ def _payload(s: dict) -> str:
         "math": s["math"],
         "dificultad": s["dificultad"],
     }
-    if s["modo"] == "Torneo":
+    tipo = s.get("tipo")
+    if s["modo"] == "Torneo" and tipo == "overcall":
+        base |= {
+            "tipo": "overcall",
+            "posicion_heroe": "Ciega Grande",
+            "posicion_jammer": m["jam_pos_label"]["es"],
+            "posicion_jammer_en": m["jam_pos_label"]["en"],
+            "combos_de_jam": m["n_jam_combos"],
+            "a_pagar_bb": m["to_call_bb"],
+        }
+    elif s["modo"] == "Torneo":
         base |= {
             "posicion_heroe": m["pos_label"]["es"],
             "posicion_heroe_en": m["pos_label"]["en"],
@@ -64,6 +81,13 @@ def _payload(s: dict) -> str:
             "fraccion_pozo": m["bet_fraction"],
             "composicion_rango": m["rango"],
         }
+        if tipo == "river_3way":
+            base |= {
+                "tipo": "river_3way",
+                "posicion_pagador": m["pos_label_pagador"]["es"],
+                "posicion_pagador_en": m["pos_label_pagador"]["en"],
+                "rango_pagador": m["rango_pagador"],
+            }
     return json.dumps(base, ensure_ascii=False)
 
 
@@ -88,6 +112,8 @@ def explain_offline(s: dict) -> dict:
     """Plantillas deterministas para probar el pipeline sin API."""
     if s["modo"] == "Cash Game":
         return _offline_cash(s)
+    if s.get("tipo") == "overcall":
+        return _offline_overcall(s)
     m = s["_meta"]
     hand, stack, thr = m["hand"], s["stack_bb"], m["threshold"]
     eq = round(s["math"]["equity"] * 100, 1)
@@ -155,6 +181,69 @@ def explain_offline(s: dict) -> dict:
     }
 
 
+def _offline_overcall(s: dict) -> dict:
+    """Plantilla determinista para el spot de overcall (pagar un jam)."""
+    m = s["_meta"]
+    hand, stack = m["hand"], s["stack_bb"]
+    eq = round(s["math"]["equity"] * 100, 1)
+    po = round(s["math"]["pot_odds"] * 100, 1)
+    call = s["opcion_correcta_index"] == 1
+    jpos_es, jpos_en = m["jam_pos_label"]["es"], m["jam_pos_label"]["en"]
+    ncombos, to_call = m["n_jam_combos"], m["to_call_bb"]
+
+    ap_es = (f"Nivel con antes. El rival en {jpos_es} va All-In por {stack} BB "
+             f"y todos foldean hasta ti en la Ciega Grande. Debes pagar "
+             f"{to_call} BB para ver el showdown.")
+    ap_en = (f"Ante level. The {jpos_en} shoves All-In for {stack} BB and it "
+             f"folds to you in the Big Blind. You must call {to_call} BB to "
+             f"see the showdown.")
+
+    mat_es = (f"Pagar {to_call} BB para disputar el bote exige {po}% de equidad "
+              f"y tu {hand} tiene {eq}% frente al rango de jam del rival "
+              f"(unos {ncombos} combos). Es una decisión de chip-EV pura: "
+              f"comparas tu equidad con las probabilidades del bote.")
+    mat_en = (f"Calling {to_call} BB to contest the pot needs {po}% equity and "
+              f"your {hand} has {eq}% against the villain's jamming range "
+              f"(about {ncombos} combos). It is a pure chip-EV call: your "
+              f"equity versus the pot odds.")
+
+    psi_es = (f"El rango de all-in desde {jpos_es} se deriva de los umbrales "
+              f"Nash: cuanto más corto el stack, más ancho jamea y más manos "
+              f"medias pagas rentablemente. A {stack} BB su rango sigue "
+              f"conteniendo faroles y manos dominadas que subes de equidad.")
+    psi_en = (f"The all-in range from {jpos_en} comes straight from the Nash "
+              f"thresholds: the shorter the stack, the wider the shove and the "
+              f"more medium hands you can profitably call. At {stack} BB that "
+              f"range still holds bluffs and dominated hands you beat.")
+
+    if call:
+        con_es = (f"Con {eq}% de equidad frente a {po}% requerido, pagar es "
+                  f"+EV a largo plazo aunque pierdas esta mano. Foldear aquí "
+                  f"regala fold equity a un rango que jamea demasiado ancho.")
+        con_en = (f"With {eq}% equity versus the {po}% required, calling is "
+                  f"+EV long-term even if you lose this hand. Folding here "
+                  f"rewards a range that jams far too wide.")
+    else:
+        con_es = (f"Con {eq}% de equidad y {po}% requerido, pagar quema fichas: "
+                  f"el rango de jam te supera demasiado. Quien paga confunde "
+                  f"'estoy en la ciega' con tener las odds para disputar el bote.")
+        con_en = (f"With {eq}% equity against {po}% required, calling burns "
+                  f"chips: the jamming range beats you too often. Calling here "
+                  f"confuses 'I'm in the blind' with actually having the odds.")
+
+    return {
+        "accion_previa": {"es": ap_es, "en": ap_en},
+        "desglose": {
+            "es": {"matematica_rapida": mat_es,
+                   "psicologia_y_rangos": psi_es,
+                   "control_y_conclusion": con_es},
+            "en": {"matematica_rapida": mat_en,
+                   "psicologia_y_rangos": psi_en,
+                   "control_y_conclusion": con_en},
+        },
+    }
+
+
 def _offline_cash(s: dict) -> dict:
     m = s["_meta"]
     hand = m["hand"]
@@ -168,10 +257,25 @@ def _offline_cash(s: dict) -> dict:
     call = s["opcion_correcta_index"] == 1
     vpos_es, vpos_en = m["pos_label"]["es"], m["pos_label"]["en"]
 
-    ap_es = (f"Cash 100 BB. Llegas al river con {pot} BB en el pozo. "
-             f"El rival en {vpos_es} apuesta {bet} BB ({frac}% del pozo).")
-    ap_en = (f"100 BB cash game. You reach the river with {pot} BB in the pot. "
-             f"The {vpos_en} bets {bet} BB ({frac}% pot).")
+    is_3way = s.get("tipo") == "river_3way"
+    pag_es = pag_en = ""
+    if is_3way:
+        pag_es = m["pos_label_pagador"]["es"]
+        pag_en = m["pos_label_pagador"]["en"]
+        ncall = m["rango_pagador"]["n_call"]
+
+    if is_3way:
+        ap_es = (f"Cash 100 BB a 3 bandas. En el river el rival en {vpos_es} "
+                 f"apuesta {bet} BB y el de {pag_es} iguala en frío; cierras tú "
+                 f"desde la Ciega Grande.")
+        ap_en = (f"3-way 100 BB cash game. On the river the {vpos_en} bets "
+                 f"{bet} BB and the {pag_en} cold-calls; you close the action "
+                 f"from the Big Blind.")
+    else:
+        ap_es = (f"Cash 100 BB. Llegas al river con {pot} BB en el pozo. "
+                 f"El rival en {vpos_es} apuesta {bet} BB ({frac}% del pozo).")
+        ap_en = (f"100 BB cash game. You reach the river with {pot} BB in the "
+                 f"pot. The {vpos_en} bets {bet} BB ({frac}% pot).")
 
     mat_es = (f"Pagar {bet} BB para ganar {pot + bet} BB exige {po}% de "
               f"equidad y tu {hand} tiene {eq}% contra el rango de apuesta. "
@@ -190,6 +294,15 @@ def _offline_cash(s: dict) -> dict:
               f"or better, or strong top pair) and {nb} natural bluffs with "
               f"no showdown value. Your hand only wins against the bluff "
               f"portion and the value hands you beat.")
+    if is_3way:
+        psi_es += (f" Además, el pagador en {pag_es} entra con ~{ncall} combos "
+                   f"de una pareja hecha: al ser 3 bandas necesitas superar a "
+                   f"AMBOS rivales para llevarte el bote, así que tu equidad "
+                   f"real baja frente a la suma de los dos rangos.")
+        psi_en += (f" On top of that, the {pag_en} cold-caller shows up with "
+                   f"~{ncall} one-pair combos: three-way you must beat BOTH "
+                   f"opponents to win, so your real equity drops against the "
+                   f"union of the two ranges.")
 
     if call:
         con_es = (f"Con {eq}% de equidad frente a {po}% requerido, el call es "

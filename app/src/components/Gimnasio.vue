@@ -3,7 +3,7 @@ import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PokerTable from './PokerTable.vue'
 import WhyCard from './WhyCard.vue'
-import { record } from '../stores/progress.js'
+import { progress, record } from '../stores/progress.js'
 
 const props = defineProps({ scenarios: Array })
 defineEmits(['exit'])
@@ -11,8 +11,9 @@ defineEmits(['exit'])
 const { locale } = useI18n()
 const SESSION = 10
 
-// Sesión: mezcla ligera reproducible por día para variar sin repetirse
-const order = ref(shuffle([...props.scenarios.keys()]).slice(0, SESSION))
+// Sesión aleatoria que prioriza manos NO jugadas: solo repite las ya
+// vistas cuando se agotan las nuevas, para que no se repitan entre sesiones.
+const order = ref(buildSession())
 const idx = ref(0)
 const picked = ref(null)          // índice de opción elegida, null = sin responder
 const results = ref([])           // booleans de la sesión
@@ -23,14 +24,22 @@ const isCorrect = computed(() =>
   picked.value !== null && picked.value === scenario.value.opcion_correcta_index)
 
 function shuffle (arr) {
-  const seed = Number(new Date().toISOString().slice(0, 10).replaceAll('-', ''))
-  let s = seed
-  const rnd = () => ((s = (s * 9301 + 49297) % 233280) / 233280)
   for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
+    const j = Math.floor(Math.random() * (i + 1));
     [arr[i], arr[j]] = [arr[j], arr[i]]
   }
   return arr
+}
+
+// Construye la sesión: primero manos sin responder (barajadas), y si no
+// llegan a SESSION, completa con las ya jugadas (también barajadas). Así
+// cada sesión es distinta y no repite hasta haber agotado el banco de manos.
+function buildSession () {
+  const keys = [...props.scenarios.keys()]
+  const isSeen = (i) => props.scenarios[i].id in progress.answered
+  const unseen = shuffle(keys.filter(i => !isSeen(i)))
+  const seen = shuffle(keys.filter(isSeen))
+  return [...unseen, ...seen].slice(0, SESSION)
 }
 
 async function choose (i) {
@@ -48,7 +57,7 @@ function next () {
 }
 
 function restart () {
-  order.value = shuffle([...props.scenarios.keys()]).slice(0, SESSION)
+  order.value = buildSession()
   idx.value = 0
   picked.value = null
   results.value = []

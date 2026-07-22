@@ -111,3 +111,23 @@ def build_river_bet_range(
                 len(bluffs) / (len(value) + len(bluffs)), 4)
             if value or bluffs else 0.0}
     return value + bluffs, info
+
+
+def build_cold_call_range(
+    villain_pos: str,
+    board: list[str],
+    dead_cards: set[str],
+) -> tuple[list[tuple[str, str]], dict]:
+    """Rango de un rival que SÓLO iguala la apuesta (cold-call) en el river.
+
+    Construcción verificable, no opinión: de su rango de apertura, se queda
+    con las manos que en este board son exactamente UNA pareja (bluff-catchers
+    y valor medio que flotan). Descarta el aire (foldearía) y las manos de
+    doble pareja+ (subiría/re-subiría, no se limitaría a igualar). Al estar
+    aún un jugador por actuar detrás, ese flat representa fuerza intermedia.
+    """
+    combos = [c for c in pm.expand_range(OPEN_RANGES[villain_pos])
+              if c[0] not in dead_cards and c[1] not in dead_cards]
+    flat = [c for c in combos if _strength(c, board)[0] == 1]
+    info = {"n_call": len(flat)}
+    return flat, info

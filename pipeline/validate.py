@@ -49,10 +49,14 @@ def check(s: dict) -> list[str]:
         errors.append("pot_odds fuera de 0..1")
 
     if not errors:
+        tipo = s.get("tipo")
         if s["modo"] == "Torneo":
-            errors += _check_torneo(s)
+            errors += _check_overcall(s) if tipo == "overcall" \
+                else _check_torneo(s)
         else:
             errors += _check_cash(s)
+            if tipo == "river_3way":
+                errors += _check_multiway(s)
 
     # Bilingüe
     ap = s["accion_previa"]
@@ -89,6 +93,42 @@ def _check_torneo(s: dict) -> list[str]:
         errors.append(
             f"respuesta incoherente con Nash ({s['opcion_correcta_index']}"
             f" != {expected} para {hand}@{s['stack_bb']}BB)")
+    return errors
+
+
+def _check_overcall(s: dict) -> list[str]:
+    """Torneo, spot de overcall: el héroe (BB) paga o no un all-in rival.
+
+    Fuente de verdad: el rango de jam se deriva de nash.jam_range y la
+    decisión de pago = (equity >= pot_odds). Se revalida la coherencia del
+    índice con los números ya calculados (mismo contrato que Cash)."""
+    errors = []
+    if s["fase"] != "Pre-Flop":
+        errors.append("fase de overcall debe ser Pre-Flop")
+    if s["board"] != []:
+        errors.append("board debe estar vacío en pre-flop")
+    if s["posicion_villano"] not in nash.TABLES:
+        errors.append("posición del jammer desconocida")
+    if not (3 <= s["stack_bb"] <= 22):
+        errors.append("stack fuera de rango")
+    if s["opciones"] != ["Fold", "Call"]:
+        errors.append("opciones inválidas para overcall (solo Fold/Call)")
+        return errors
+    m = s["math"]
+    expected = 1 if m["equity"] >= m["pot_odds"] else 0
+    if s["opcion_correcta_index"] != expected:
+        errors.append(
+            f"decisión de overcall incoherente con equity vs pot_odds "
+            f"({s['opcion_correcta_index']} != {expected})")
+    return errors
+
+
+def _check_multiway(s: dict) -> list[str]:
+    """Cash a 3 bandas: además de _check_cash, exige exactamente 2 rivales."""
+    errors = []
+    op = s.get("oponentes")
+    if not (isinstance(op, list) and len(op) == 2):
+        errors.append("river_3way requiere exactamente 2 oponentes")
     return errors
 
 
