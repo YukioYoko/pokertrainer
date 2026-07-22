@@ -42,11 +42,23 @@
     "intro": "Términos que aparecen en las explicaciones de cada mano.",
     "cerrar": "Cerrar"
   },
+  "evalbar": {
+    "tienes": "Tienes",
+    "necesitas": "necesitas",
+    "rentable": "pagar rinde",
+    "noRentable": "no rinde"
+  },
   "resumen": {
     "titulo": "Sesión completada",
     "aciertos": "{ok} de {total} correctas",
     "volver": "Volver al inicio",
-    "otra": "Otra sesión"
+    "otra": "Otra sesión",
+    "nivel": {
+      "excelente": "¡Excelente!",
+      "bien": "¡Bien jugado!",
+      "sigue": "Vas mejorando",
+      "repasa": "A repasar rangos"
+    }
   },
   "dificultad": {
     "Principiante": "Principiante",

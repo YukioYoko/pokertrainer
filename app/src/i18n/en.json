@@ -42,11 +42,23 @@
     "intro": "Terms that show up in the explanation of each hand.",
     "cerrar": "Close"
   },
+  "evalbar": {
+    "tienes": "You have",
+    "necesitas": "you need",
+    "rentable": "call profits",
+    "noRentable": "no profit"
+  },
   "resumen": {
     "titulo": "Session complete",
     "aciertos": "{ok} of {total} correct",
     "volver": "Back to home",
-    "otra": "New session"
+    "otra": "New session",
+    "nivel": {
+      "excelente": "Excellent!",
+      "bien": "Well played!",
+      "sigue": "Getting better",
+      "repasa": "Review your ranges"
+    }
   },
   "dificultad": {
     "Principiante": "Beginner",

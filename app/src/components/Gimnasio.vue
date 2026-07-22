@@ -23,6 +23,32 @@ const scenario = computed(() => props.scenarios[order.value[idx.value]])
 const isCorrect = computed(() =>
   picked.value !== null && picked.value === scenario.value.opcion_correcta_index)
 
+// Estado de cada mano de la sesión para la barra de progreso segmentada.
+const dots = computed(() => order.value.map((_, i) => {
+  if (i < results.value.length) return results.value[i] ? 'ok' : 'fail'
+  if (i === idx.value) return 'current'
+  return 'pending'
+}))
+const scoreOk = computed(() => results.value.filter(Boolean).length)
+
+// Anillo de precisión del resumen (estilo chess.com).
+const RING_C = 2 * Math.PI * 52
+const accuracy = computed(() => results.value.length
+  ? Math.round((scoreOk.value / results.value.length) * 100) : 0)
+const tier = computed(() => {
+  const a = accuracy.value
+  return a >= 90 ? 'excelente' : a >= 70 ? 'bien'
+    : a >= 40 ? 'sigue' : 'repasa'
+})
+// Clases literales completas (Tailwind no detecta clases concatenadas).
+const RING = {
+  gana: { stroke: 'stroke-gana', text: 'text-gana' },
+  ambar: { stroke: 'stroke-ambar', text: 'text-ambar' },
+  pierde: { stroke: 'stroke-pierde', text: 'text-pierde' }
+}
+const ringCls = computed(() => RING[
+  accuracy.value >= 70 ? 'gana' : accuracy.value >= 40 ? 'ambar' : 'pierde'])
+
 function shuffle (arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -69,10 +95,33 @@ function restart () {
   <!-- Resumen de sesión -->
   <section v-if="finished" class="flex-1 flex flex-col items-center justify-center px-5 pb-8 text-center">
     <h2 class="text-2xl font-semibold">{{ $t('resumen.titulo') }}</h2>
-    <p class="font-num text-5xl mt-4 text-ambar">
-      {{ $t('resumen.aciertos', { ok: results.filter(Boolean).length, total: results.length }) }}
+
+    <!-- Anillo de precisión -->
+    <div class="relative w-40 h-40 mt-6">
+      <svg viewBox="0 0 120 120" class="w-full h-full -rotate-90">
+        <circle cx="60" cy="60" r="52" fill="none" stroke-width="10" class="stroke-felt-700" />
+        <circle
+          cx="60" cy="60" r="52" fill="none" stroke-width="10" stroke-linecap="round"
+          class="transition-all duration-700"
+          :class="ringCls.stroke"
+          :stroke-dasharray="RING_C"
+          :stroke-dashoffset="RING_C * (1 - accuracy / 100)"
+        />
+      </svg>
+      <div class="absolute inset-0 flex flex-col items-center justify-center">
+        <span class="font-num text-4xl" :class="ringCls.text">{{ accuracy }}%</span>
+        <span class="font-num text-xs text-naipe/50 mt-0.5">{{ scoreOk }}/{{ results.length }}</span>
+      </div>
+    </div>
+
+    <p class="text-lg font-semibold mt-5" :class="ringCls.text">
+      {{ $t('resumen.nivel.' + tier) }}
     </p>
-    <div class="flex gap-3 mt-10">
+    <p class="text-sm text-naipe/50 mt-1">
+      {{ $t('resumen.aciertos', { ok: scoreOk, total: results.length }) }}
+    </p>
+
+    <div class="flex gap-3 mt-8">
       <button
         class="px-5 py-3 rounded-xl border border-felt-600 text-naipe/80 hover:border-naipe/40
                focus-visible:outline focus-visible:outline-2 focus-visible:outline-ambar"
@@ -93,11 +142,28 @@ function restart () {
         class="underline-offset-2 hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-ambar rounded"
         @click="$emit('exit')"
       >← {{ $t('gimnasio.salir') }}</button>
-      <span class="font-num">{{ $t('gimnasio.mano', { actual: idx + 1, total: order.length }) }}</span>
+      <span class="font-num text-gana/90">✓ {{ scoreOk }}</span>
       <span class="text-xs px-2 py-0.5 rounded-full border border-felt-600">
         {{ $t('dificultad.' + scenario.dificultad) }}
       </span>
     </div>
+
+    <!-- Progreso de la sesión (estilo puzzle) -->
+    <div class="flex items-center gap-1 mt-3">
+      <span
+        v-for="(d, i) in dots" :key="i"
+        class="h-2 flex-1 rounded-full transition-colors duration-300"
+        :class="{
+          'bg-gana': d === 'ok',
+          'bg-pierde': d === 'fail',
+          'bg-ambar': d === 'current',
+          'bg-felt-700': d === 'pending'
+        }"
+      />
+    </div>
+    <p class="text-center text-xs text-naipe/40 font-num mt-1.5">
+      {{ $t('gimnasio.mano', { actual: idx + 1, total: order.length }) }}
+    </p>
 
     <div class="mt-4" :class="{ 'opacity-40 pointer-events-none': picked !== null }">
       <PokerTable :scenario="scenario" />

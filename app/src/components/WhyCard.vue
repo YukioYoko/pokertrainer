@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import EquityBar from './EquityBar.vue'
 
 const props = defineProps({
   scenario: Object,
@@ -22,7 +23,6 @@ const desglose = computed(() =>
   props.scenario.desglose[locale.value] || props.scenario.desglose.es)
 const correctAction = computed(() =>
   props.scenario.opciones[props.scenario.opcion_correcta_index])
-const pct = (x) => Math.round(x * 1000) / 10 + '%'
 </script>
 
 <template>
@@ -47,9 +47,8 @@ const pct = (x) => Math.round(x * 1000) / 10 + '%'
         <p v-if="!correct" class="text-sm text-naipe/70 mt-0.5">
           {{ t('whycard.correctaEra', { accion: correctAction }) }}
         </p>
-        <div class="flex gap-4 mt-2 font-num text-sm text-naipe/70">
-          <span>{{ t('whycard.equity') }}: <b class="text-naipe">{{ pct(scenario.math.equity) }}</b></span>
-          <span>{{ t('whycard.potOdds') }}: <b class="text-naipe">{{ pct(scenario.math.pot_odds) }}</b></span>
+        <div class="mt-3">
+          <EquityBar :equity="scenario.math.equity" :pot-odds="scenario.math.pot_odds" />
         </div>
       </div>
 
