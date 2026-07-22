@@ -199,13 +199,23 @@ def _check_hand(s: dict) -> list[str]:
         m = nd.get("math", {})
         if not (0 <= m.get("equity", -1) <= 1):
             errors.append(f"equity fuera de 0..1 en {name}")
-        if not (0 <= m.get("pot_odds", -1) <= 1):
-            errors.append(f"pot_odds fuera de 0..1 en {name}")
-        expected = 1 if m.get("equity", 0) >= m.get("pot_odds", 1) else 0
-        if nd.get("opcion_correcta_index") != expected:
-            errors.append(
-                f"decisión de {name} incoherente con equity vs pot_odds "
-                f"({nd.get('opcion_correcta_index')} != {expected})")
+        if nd.get("villano_pasa"):
+            # Nodo de check (solo river): correcto = Bet si EV(apostar) > EV(pasar).
+            if nd.get("opciones") != ["Check", "Fold", "Bet"]:
+                errors.append(f"opciones inválidas en {name} (check)")
+            expected = 2 if m.get("ev_apostar", 0) > m.get("ev_pasar", 0) else 0
+            if nd.get("opcion_correcta_index") != expected:
+                errors.append(
+                    f"decisión de check en {name} incoherente con EV "
+                    f"({nd.get('opcion_correcta_index')} != {expected})")
+        else:
+            if not (0 <= m.get("pot_odds", -1) <= 1):
+                errors.append(f"pot_odds fuera de 0..1 en {name}")
+            expected = 1 if m.get("equity", 0) >= m.get("pot_odds", 1) else 0
+            if nd.get("opcion_correcta_index") != expected:
+                errors.append(
+                    f"decisión de {name} incoherente con equity vs pot_odds "
+                    f"({nd.get('opcion_correcta_index')} != {expected})")
         ex = nd.get("explicacion", {})
         if not (isinstance(ex, dict) and ex.get("es") and ex.get("en")):
             errors.append(f"explicacion de {name} sin es/en")

@@ -379,30 +379,48 @@ def _offline_hand(s: dict) -> dict:
     calles_out = []
     for nd in s["calles"]:
         eq = round(nd["math"]["equity"] * 100, 1)
-        po = round(nd["math"]["pot_odds"] * 100, 1)
-        bet = nd["villano_apuesta_bb"]
         pot = nd["pozo_previo_bb"]
-        nv = nd["_rango"]["n_value"]
-        nb = nd["_rango"]["n_bluffs"]
-        call = nd["opcion_correcta_index"] == 1
         calle = nd["calle"]
-        veredicto_es = ("pagar es correcto: tienes el precio"
-                        if call else "lo correcto es foldear: no tienes precio")
-        veredicto_en = ("calling is correct: you have the price"
-                        if call else "folding is correct: you lack the price")
-        ex_es = (f"{calle}: el villano apuesta {bet} BB a un pozo de {pot} BB, "
-                 f"así que necesitas {po}% de equidad y tienes {eq}% frente a "
-                 f"su rango ({nv} manos de valor, {nb} faroles). Por eso "
-                 f"{veredicto_es}.")
-        ex_en = (f"{calle}: villain bets {bet} BB into a {pot} BB pot, so you "
-                 f"need {po}% equity and you have {eq}% against their range "
-                 f"({nv} value hands, {nb} bluffs). That is why {veredicto_en}.")
+        if nd.get("villano_pasa"):
+            bet = nd["apuesta_heroe_bb"]
+            eva = nd["math"]["ev_apostar"]
+            evp = nd["math"]["ev_pasar"]
+            bet_ok = nd["opcion_correcta_index"] == 2
+            ex_es = (f"{calle}: el villano PASA y capa su rango (deja fuera sus "
+                     f"manos fuertes). Tu equidad frente a ese rango es {eq}%. "
+                     f"Apostar {bet} BB rinde {eva} BB y pasar {evp} BB, así que "
+                     f"lo correcto es {'apostar por valor' if bet_ok else 'pasar y ver un showdown gratis'}. "
+                     f"Foldear jamás: pasar no cuesta nada.")
+            ex_en = (f"{calle}: villain CHECKS, capping their range (no strong "
+                     f"hands left). Your equity vs that range is {eq}%. Betting "
+                     f"{bet} BB yields {eva} BB and checking {evp} BB, so the "
+                     f"right play is {'a value bet' if bet_ok else 'to check back and take a free showdown'}. "
+                     f"Never fold: checking is free.")
+        else:
+            po = round(nd["math"]["pot_odds"] * 100, 1)
+            bet = nd["villano_apuesta_bb"]
+            nv = nd["_rango"]["n_value"]
+            nb = nd["_rango"]["n_bluffs"]
+            call = nd["opcion_correcta_index"] == 1
+            veredicto_es = ("pagar es correcto: tienes el precio"
+                            if call else "lo correcto es foldear: no tienes precio")
+            veredicto_en = ("calling is correct: you have the price"
+                            if call else "folding is correct: you lack the price")
+            ex_es = (f"{calle}: el villano apuesta {bet} BB a un pozo de {pot} BB, "
+                     f"así que necesitas {po}% de equidad y tienes {eq}% frente a "
+                     f"su rango ({nv} manos de valor, {nb} faroles). Por eso "
+                     f"{veredicto_es}.")
+            ex_en = (f"{calle}: villain bets {bet} BB into a {pot} BB pot, so you "
+                     f"need {po}% equity and you have {eq}% against their range "
+                     f"({nv} value hands, {nb} bluffs). That is why {veredicto_en}.")
         clean = {k: v for k, v in nd.items() if k != "_rango"}
         clean["explicacion"] = {"es": ex_es, "en": ex_en}
         calles_out.append(clean)
 
-    n_call = sum(1 for nd in s["calles"] if nd["opcion_correcta_index"] == 1)
-    n_fold = len(s["calles"]) - n_call
+    n_call = sum(1 for nd in s["calles"]
+                 if not nd.get("villano_pasa") and nd["opcion_correcta_index"] == 1)
+    n_fold = sum(1 for nd in s["calles"]
+                 if not nd.get("villano_pasa") and nd["opcion_correcta_index"] == 0)
     res_es = (f"En esta mano la línea correcta era pagar {n_call} calle(s) y "
               f"foldear {n_fold}. La clave en cada punto es la misma: ¿tu "
               f"equidad supera las pot odds que te ofrece la apuesta? Si en "

@@ -65,8 +65,70 @@ def _street_node(hero, board_partial, pot, frac, rng, seed_off):
     return node, round(pot + 2 * bet, 2)   # nodo, pozo si el héroe paga
 
 
+def _check_node(hero, board, pot, frac):
+    """Nodo de RIVER donde el villano PASA: el héroe elige Check/Fold/Bet.
+
+    Verificable (river = equidad exacta): correcto = Bet si EV(apostar) >
+    EV(pasar). El villano capa su rango al pasar (todo lo que NO apostaría) y,
+    frente a una apuesta, defiende por MDF con sus manos más fuertes. Foldear
+    nunca es correcto: pasar es gratis (opción-trampa pedagógica).
+    """
+    dead = set(hero) | set(board)
+    full = [c for c in pm.expand_range(cr.OPEN_RANGES[VILLAIN_POS])
+            if c[0] not in dead and c[1] not in dead]
+    bluff_frac = cm.value_bluff_ratio(round(pot * 0.66, 2), pot)
+    bet_combos, _info = cr.build_river_bet_range(VILLAIN_POS, board, hero,
+                                                 bluff_frac)
+    bet_set = set(bet_combos)
+    check_range = [c for c in full if c not in bet_set]
+    if len(check_range) < 12:                 # rango de check demasiado fino
+        return None
+
+    bet = round(pot * frac, 2)
+    mdf = cm.mdf(bet, pot)
+    ranked = sorted(check_range, key=lambda c: cr._strength(c, board)[1],
+                    reverse=True)
+    calling = ranked[:max(1, round(mdf * len(check_range)))]
+    eq_check = pm.equity_river_exact(hero, check_range, board)
+    eq_call = pm.equity_river_exact(hero, calling, board)
+    # Se redondea ANTES de decidir para que la respuesta coincida exactamente
+    # con lo que re-verifica validate a partir de los valores almacenados.
+    ev_pasar = round(eq_check * pot, 3)
+    ev_apostar = round((1 - mdf) * pot + mdf * (
+        eq_call * (pot + bet) - (1 - eq_call) * bet), 3)
+    correct = 2 if ev_apostar > ev_pasar else 0   # 0=Check, 1=Fold, 2=Bet
+
+    node = {
+        "calle": "River",
+        "board": board,
+        "villano_pasa": True,
+        "villano_apuesta_bb": 0,
+        "apuesta_heroe_bb": bet,
+        "pozo_previo_bb": round(pot, 2),
+        "opciones": ["Check", "Fold", "Bet"],
+        "opcion_correcta_index": correct,
+        "math": {
+            "equity": eq_check,
+            "eq_call": eq_call,
+            "mdf": round(mdf, 4),
+            "ev_pasar": round(ev_pasar, 3),
+            "ev_apostar": round(ev_apostar, 3),
+        },
+        "_rango": {"n_check": len(check_range), "n_call": len(calling)},
+    }
+    return node, round(pot, 2)                # pasar no cambia el pozo
+
+
+def _closeness(nd) -> float:
+    """Cuán ajustada es la decisión del nodo (0 = línea muy fina)."""
+    m = nd["math"]
+    if nd.get("villano_pasa"):
+        return abs(m["ev_apostar"] - m["ev_pasar"]) / max(nd["pozo_previo_bb"], 1)
+    return abs(m["equity"] - m["pot_odds"])
+
+
 def _difficulty(nodes) -> str:
-    dmin = min(abs(n["math"]["equity"] - n["math"]["pot_odds"]) for n in nodes)
+    dmin = min(_closeness(n) for n in nodes)
     if dmin <= 0.05:
         return "Avanzado"
     if dmin <= 0.12:
@@ -92,12 +154,18 @@ def generate(n: int = 60, seed: int = 3042) -> list[dict]:
             continue
 
         fracs = [rng.choice(BET_FRACTIONS) for _ in range(3)]
+        # En ~40% de las manos el villano PASA el river y el héroe decide
+        # Check/Fold/Bet en vez de enfrentar una apuesta.
+        river_check = rng.random() < 0.4
         nodes = []
         pot = POT_FLOP_BB
         ok = True
         for i in range(3):
-            res = _street_node(hero, board[:3 + i], pot, fracs[i], rng,
-                               seed + len(scenarios) + i + 1)
+            if i == 2 and river_check:
+                res = _check_node(hero, board, pot, fracs[i])
+            else:
+                res = _street_node(hero, board[:3 + i], pot, fracs[i], rng,
+                                   seed + len(scenarios) + i + 1)
             if res is None:
                 ok = False
                 break
@@ -109,7 +177,8 @@ def generate(n: int = 60, seed: int = 3042) -> list[dict]:
         diff = _difficulty(nodes)
         if quota[diff] >= target[diff]:
             continue
-        key = (tuple(sorted(hero)), tuple(sorted(board)), tuple(fracs))
+        key = (tuple(sorted(hero)), tuple(sorted(board)), tuple(fracs),
+               river_check)
         if key in seen:
             continue
         seen.add(key)
@@ -118,8 +187,11 @@ def generate(n: int = 60, seed: int = 3042) -> list[dict]:
         hand = pm.hand_to_notation(hero)
         # leaks: una etiqueta por cada calle mal jugable (para el analizador).
         leaks = ["mano_completa"]
-        if any(nd["opcion_correcta_index"] == 0 for nd in nodes):
+        if any(not nd.get("villano_pasa") and nd["opcion_correcta_index"] == 0
+               for nd in nodes):
             leaks.append("continuar_sin_odds")
+        if any(nd.get("villano_pasa") for nd in nodes):
+            leaks.append("decision_check_river")
         if diff == "Avanzado":
             leaks.append("spot_borderline")
 

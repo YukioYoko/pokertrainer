@@ -49,6 +49,9 @@
   "manoCompleta": {
     "mano": "Mano {actual} de {total}",
     "apuesta": "El {pos} apuesta {bet} BB",
+    "pasa": "El {pos} pasa — te toca decidir",
+    "evBet": "EV apostar",
+    "evCheck": "EV pasar",
     "repaso": "Repaso de la mano",
     "siguienteMano": "Siguiente mano",
     "decisiones": "{ok} de {total} decisiones correctas",

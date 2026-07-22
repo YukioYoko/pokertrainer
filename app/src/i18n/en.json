@@ -49,6 +49,9 @@
   "manoCompleta": {
     "mano": "Hand {actual} of {total}",
     "apuesta": "The {pos} bets {bet} BB",
+    "pasa": "The {pos} checks — your move",
+    "evBet": "EV bet",
+    "evCheck": "EV check",
     "repaso": "Hand review",
     "siguienteMano": "Next hand",
     "decisiones": "{ok} of {total} decisions correct",

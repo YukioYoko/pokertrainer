@@ -164,18 +164,22 @@ const accuracy = computed(() => totalStreets.value
       <p class="mt-5 text-center">
         <span class="text-xs uppercase tracking-wider text-naipe/40 block">{{ calle.calle }}</span>
         <span class="text-naipe/90">
-          {{ $t('manoCompleta.apuesta', { pos: $t('posicion.' + hand.posicion_villano), bet: calle.villano_apuesta_bb }) }}
+          <template v-if="calle.villano_pasa">
+            {{ $t('manoCompleta.pasa', { pos: $t('posicion.' + hand.posicion_villano) }) }}
+          </template>
+          <template v-else>
+            {{ $t('manoCompleta.apuesta', { pos: $t('posicion.' + hand.posicion_villano), bet: calle.villano_apuesta_bb }) }}
+          </template>
         </span>
       </p>
 
-      <div class="mt-auto pt-5 grid grid-cols-2 gap-3">
+      <div class="mt-auto pt-5 grid gap-3"
+        :class="calle.opciones.length === 3 ? 'grid-cols-3' : 'grid-cols-2'">
         <button
           v-for="(op, i) in calle.opciones" :key="op"
-          class="py-4 rounded-2xl text-lg font-semibold transition-colors
+          class="py-4 rounded-2xl text-lg font-semibold bg-felt-700 border border-felt-600
+                 hover:bg-felt-600 transition-colors
                  focus-visible:outline focus-visible:outline-2 focus-visible:outline-naipe"
-          :class="i === 1
-            ? 'bg-ambar text-felt-950 hover:brightness-110'
-            : 'bg-felt-700 border border-felt-600 hover:bg-felt-600'"
           @click="choose(i)"
         >{{ op }}</button>
       </div>
@@ -205,9 +209,14 @@ const accuracy = computed(() => totalStreets.value
               </span>
             </span>
           </div>
-          <div class="mt-3">
+          <div v-if="!nd.villano_pasa" class="mt-3">
             <EquityBar :equity="nd.math.equity" :pot-odds="nd.math.pot_odds" />
           </div>
+          <p v-else class="mt-2 font-num text-xs text-naipe/60">
+            {{ $t('whycard.equity') }}: <b class="text-naipe">{{ Math.round(nd.math.equity * 100) }}%</b>
+            · {{ $t('manoCompleta.evBet') }} <b class="text-naipe">{{ nd.math.ev_apostar }}</b>
+            · {{ $t('manoCompleta.evCheck') }} <b class="text-naipe">{{ nd.math.ev_pasar }}</b>
+          </p>
           <p class="mt-3 text-sm text-naipe/80 leading-relaxed">{{ nd.explicacion[loc] }}</p>
         </div>
 
